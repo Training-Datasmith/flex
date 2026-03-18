@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -72,9 +74,9 @@ class RecipePatcher
         $ignoredFiles = $this->getIgnoredFiles(array_keys($originalFiles) + array_keys($newFiles));
 
         // null implies "file does not exist"
-        $originalFiles = array_filter($originalFiles, fn($file, $fileName) => null !== $file && !\in_array($fileName, $ignoredFiles), \ARRAY_FILTER_USE_BOTH);
+        $originalFiles = array_filter($originalFiles, fn ($file, $fileName) => null !== $file && !\in_array($fileName, $ignoredFiles), \ARRAY_FILTER_USE_BOTH);
 
-        $newFiles = array_filter($newFiles, fn($file, $fileName) => null !== $file && !\in_array($fileName, $ignoredFiles), \ARRAY_FILTER_USE_BOTH);
+        $newFiles = array_filter($newFiles, fn ($file, $fileName) => null !== $file && !\in_array($fileName, $ignoredFiles), \ARRAY_FILTER_USE_BOTH);
 
         $deletedFiles = [];
         // find removed files & record that they are deleted

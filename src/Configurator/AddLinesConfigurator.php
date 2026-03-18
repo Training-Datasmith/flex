@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Symfony\Flex\Configurator;
 
 use Composer\IO\IOInterface;
@@ -57,7 +59,7 @@ class AddLinesConfigurator extends AbstractConfigurator
     public function update(RecipeUpdate $recipeUpdate, array $originalConfig, array $newConfig): void
     {
         // manually check for "requires", as unconfigure ignores it
-        $originalConfig = array_filter($originalConfig, fn(array $item) => !isset($item['requires']) || $this->isPackageInstalled($item['requires']));
+        $originalConfig = array_filter($originalConfig, fn (array $item) => !isset($item['requires']) || $this->isPackageInstalled($item['requires']));
 
         // reset the file content cache
         $this->fileContents = [];

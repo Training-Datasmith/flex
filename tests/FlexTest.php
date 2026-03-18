@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -165,8 +167,11 @@ class FlexTest extends TestCase
                 }
 
                 $expectedManifest = [
-                    'origin' => \sprintf('%s:%s@auto-generated recipe', $package->getName(),
-                        $package->getPrettyVersion()),
+                    'origin' => \sprintf(
+                        '%s:%s@auto-generated recipe',
+                        $package->getName(),
+                        $package->getPrettyVersion()
+                    ),
                     'manifest' => ['bundles' => []],
                 ];
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Symfony\Flex;
 
 use Composer\DependencyResolver\Operation\OperationInterface;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -49,7 +51,8 @@ class ContainerConfiguratorTest extends TestCase
             new Options(['config-dir' => 'config', 'root-dir' => FLEX_TEST_DIR])
         );
         $configurator->configure($recipe, ['locale' => 'en'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             # comment
             parameters:
                 locale: 'en'
@@ -61,7 +64,8 @@ class ContainerConfiguratorTest extends TestCase
         );
 
         $configurator->unconfigure($recipe, ['locale' => 'en'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             # comment
             parameters:
 
@@ -90,7 +94,8 @@ class ContainerConfiguratorTest extends TestCase
             new Options(['config-dir' => 'config', 'root-dir' => FLEX_TEST_DIR])
         );
         $configurator->configure($recipe, ['locale' => 'en'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             parameters:
                 locale: 'en'
 
@@ -101,7 +106,8 @@ class ContainerConfiguratorTest extends TestCase
         );
 
         $configurator->unconfigure($recipe, ['locale' => 'en'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             parameters:
 
             services:
@@ -132,7 +138,8 @@ class ContainerConfiguratorTest extends TestCase
             new Options(['config-dir' => 'config', 'root-dir' => FLEX_TEST_DIR])
         );
         $configurator->configure($recipe, ['locale' => 'en'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             parameters:
                 locale: es
 
@@ -143,7 +150,8 @@ class ContainerConfiguratorTest extends TestCase
         );
 
         $configurator->unconfigure($recipe, ['locale' => 'en'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             parameters:
 
             services:
@@ -178,7 +186,8 @@ class ContainerConfiguratorTest extends TestCase
             new Options(['config-dir' => 'config', 'root-dir' => FLEX_TEST_DIR])
         );
         $configurator->configure($recipe, ['locale' => 'en', 'foobar' => 'baz'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             parameters:
                 # comment 1
                 locale: es
@@ -194,7 +203,8 @@ class ContainerConfiguratorTest extends TestCase
         );
 
         $configurator->unconfigure($recipe, ['locale' => 'en', 'foobar' => 'baz'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             parameters:
                 # comment 1
 
@@ -230,7 +240,8 @@ class ContainerConfiguratorTest extends TestCase
             new Options(['config-dir' => 'config', 'root-dir' => FLEX_TEST_DIR])
         );
         $configurator->configure($recipe, ['locale' => 'en', 'foobar' => 'baz', 'array' => ['key1' => 'value', 'key2' => "Escape ' one quote"], 'key1' => 'Keep It'], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             parameters:
                 # comment 1
                 locale: es
@@ -247,7 +258,8 @@ class ContainerConfiguratorTest extends TestCase
         );
 
         $configurator->unconfigure($recipe, ['locale' => 'en', 'array' => ['key1' => 'value', 'key2' => "Escape ' one quote"]], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             parameters:
                 # comment 1
                 foobar: 'baz'
@@ -282,7 +294,8 @@ class ContainerConfiguratorTest extends TestCase
             new Options(['config-dir' => 'config', 'root-dir' => FLEX_TEST_DIR])
         );
         $configurator->configure($recipe, ['env(APP_ENV)' => ''], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             # comment
             parameters:
                 env(APP_ENV): ''
@@ -294,7 +307,8 @@ class ContainerConfiguratorTest extends TestCase
         );
 
         $configurator->unconfigure($recipe, ['env(APP_ENV)' => ''], $lock);
-        $this->assertEquals(<<<YAML
+        $this->assertEquals(
+            <<<YAML
             # comment
             parameters:
 

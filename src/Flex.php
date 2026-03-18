@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -288,7 +290,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
             $packages[] = new Package($name, $versionParser->normalize($info['version']), $info['version']);
         }
 
-        $transation = \Closure::bind(fn() => new Transaction($packages, $event->getTransaction()->resultPackageMap), null, Transaction::class)();
+        $transation = \Closure::bind(fn () => new Transaction($packages, $event->getTransaction()->resultPackageMap), null, Transaction::class)();
 
         foreach ($transation->getOperations() as $operation) {
             if (!$operation instanceof UninstallOperation && $this->shouldRecordOperation($operation, $event->isDevMode(), $event->getComposer())) {

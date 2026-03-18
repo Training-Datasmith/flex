@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -31,6 +33,6 @@ class Path
     {
         $first = array_shift($parts);
 
-        return array_reduce($parts, fn(string $initial, string $next): string => rtrim($initial, '/').'/'.ltrim($next, '/'), $first);
+        return array_reduce($parts, fn (string $initial, string $next): string => rtrim($initial, '/').'/'.ltrim($next, '/'), $first);
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -333,7 +335,7 @@ class DockerComposeConfigurator extends AbstractConfigurator
             return [];
         }
 
-        $files = array_filter(array_map(fn($file) => $this->findDockerComposeFile($rootDir, $file), array_keys($config)));
+        $files = array_filter(array_map(fn ($file) => $this->findDockerComposeFile($rootDir, $file), array_keys($config)));
 
         $originalContents = [];
         foreach ($files as $file) {

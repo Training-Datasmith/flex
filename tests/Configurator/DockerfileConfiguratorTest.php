@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -110,7 +112,8 @@ class DockerfileConfiguratorTest extends TestCase
 
         $configurator = $this->createConfigurator();
         $configurator->configure($recipe, ['RUN docker-php-ext-install pdo_mysql'], $lock);
-        $this->assertEquals(<<<'EOF'
+        $this->assertEquals(
+            <<<'EOF'
             FROM php:7.1-fpm-alpine
 
             RUN apk add --no-cache --virtual .persistent-deps \

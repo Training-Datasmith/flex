@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -67,7 +69,9 @@ class CopyFromRecipeConfiguratorTest extends TestCase
         $lock = $this->getMockBuilder(Lock::class)->disableOriginalConstructor()->getMock();
 
         $ioCalls = [];
-        $this->io->method('writeError')->willReturnCallback(static function (array $lines) use (&$ioCalls) { $ioCalls[] = $lines; });
+        $this->io->method('writeError')->willReturnCallback(static function (array $lines) use (&$ioCalls) {
+            $ioCalls[] = $lines;
+        });
         $this->io->method('askConfirmation')->with('File "build/config/file" has uncommitted changes, overwrite? [y/N] ')->willReturn(true);
 
         $this->assertFileExists($this->targetFile);
@@ -90,7 +94,9 @@ class CopyFromRecipeConfiguratorTest extends TestCase
     public function testConfigure()
     {
         $ioCalls = [];
-        $this->io->method('writeError')->willReturnCallback(static function (array $lines) use (&$ioCalls) { $ioCalls[] = $lines; });
+        $this->io->method('writeError')->willReturnCallback(static function (array $lines) use (&$ioCalls) {
+            $ioCalls[] = $lines;
+        });
 
         $this->assertFileDoesNotExist($this->targetFile);
         $lock = $this->getMockBuilder(Lock::class)->disableOriginalConstructor()->getMock();
@@ -132,7 +138,9 @@ class CopyFromRecipeConfiguratorTest extends TestCase
     public function testUnconfigure()
     {
         $ioCalls = [];
-        $this->io->method('writeError')->willReturnCallback(static function (array $lines) use (&$ioCalls) { $ioCalls[] = $lines; });
+        $this->io->method('writeError')->willReturnCallback(static function (array $lines) use (&$ioCalls) {
+            $ioCalls[] = $lines;
+        });
 
         if (!file_exists($this->targetDirectory)) {
             @mkdir($this->targetDirectory, 0777, true);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 require __DIR__.'/../vendor/autoload.php';
 
 define('FLEX_TEST_DIR', dirname(__DIR__).'/build');

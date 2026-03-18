@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -309,7 +311,7 @@ class UpdateRecipesCommand extends BaseCommand
             return null;
         }
 
-        $newerRecipeVersions = array_filter($recipeVersions, fn($version) => version_compare($version, $recipeData['version'], '>'));
+        $newerRecipeVersions = array_filter($recipeVersions, fn ($version) => version_compare($version, $recipeData['version'], '>'));
 
         $newCommits = $currentRecipeVersionData['new_commits'];
         foreach ($newerRecipeVersions as $newerRecipeVersion) {

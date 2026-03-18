@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -42,7 +44,9 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testLinesAddedToTopOfFile()
     {
-        $this->saveFile('assets/app.js', <<<JS
+        $this->saveFile(
+            'assets/app.js',
+            <<<JS
             import * as Turbo from '@hotwired/turbo';
 
             console.log(Turbo);
@@ -57,7 +61,8 @@ class AddLinesConfiguratorTest extends TestCase
             ],
         ]);
         $actualContents = $this->readFile('assets/app.js');
-        $this->assertSame(<<<JS
+        $this->assertSame(
+            <<<JS
             import './bootstrap';
             import * as Turbo from '@hotwired/turbo';
 
@@ -79,7 +84,8 @@ class AddLinesConfiguratorTest extends TestCase
             ],
         ]);
         $actualContents = $this->readFile('config/file.txt');
-        $this->assertSame(<<<EOF
+        $this->assertSame(
+            <<<EOF
             NewFirstLine
             FirstLine
             EOF,
@@ -89,7 +95,9 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testLinesAddedToBottomOfFile()
     {
-        $this->saveFile('assets/app.js', <<<JS
+        $this->saveFile(
+            'assets/app.js',
+            <<<JS
             import * as Turbo from '@hotwired/turbo';
 
             console.log(Turbo);
@@ -104,7 +112,8 @@ class AddLinesConfiguratorTest extends TestCase
             ],
         ]);
         $actualContents = $this->readFile('assets/app.js');
-        $this->assertSame(<<<JS
+        $this->assertSame(
+            <<<JS
             import * as Turbo from '@hotwired/turbo';
 
             console.log(Turbo);
@@ -116,7 +125,9 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testLinesAddedAfterTarget()
     {
-        $this->saveFile('webpack.config.js', <<<JS
+        $this->saveFile(
+            'webpack.config.js',
+            <<<JS
             const Encore = require('@symfony/webpack-encore');
 
             Encore
@@ -147,7 +158,8 @@ class AddLinesConfiguratorTest extends TestCase
         ]);
 
         $actualContents = $this->readFile('webpack.config.js');
-        $this->assertSame(<<<JS
+        $this->assertSame(
+            <<<JS
             const Encore = require('@symfony/webpack-encore');
 
             Encore
@@ -222,12 +234,16 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testLinesAddedToMultipleFiles()
     {
-        $this->saveFile('assets/app.js', <<<JS
+        $this->saveFile(
+            'assets/app.js',
+            <<<JS
             import * as Turbo from '@hotwired/turbo';
             JS
         );
 
-        $this->saveFile('assets/bootstrap.js', <<<JS
+        $this->saveFile(
+            'assets/bootstrap.js',
+            <<<JS
             console.log('bootstrap.js');
             JS
         );
@@ -245,14 +261,16 @@ class AddLinesConfiguratorTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(<<<JS
+        $this->assertSame(
+            <<<JS
             import './bootstrap';
             import * as Turbo from '@hotwired/turbo';
             JS,
             $this->readFile('assets/app.js')
         );
 
-        $this->assertSame(<<<JS
+        $this->assertSame(
+            <<<JS
             console.log('bootstrap.js');
             console.log('on the bottom');
             JS,
@@ -262,7 +280,9 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testLineSkippedIfRequiredPackageMissing()
     {
-        $this->saveFile('assets/app.js', <<<JS
+        $this->saveFile(
+            'assets/app.js',
+            <<<JS
             import * as Turbo from '@hotwired/turbo';
 
             console.log(Turbo);
@@ -279,7 +299,8 @@ class AddLinesConfiguratorTest extends TestCase
             ],
         ], $composer);
         $actualContents = $this->readFile('assets/app.js');
-        $this->assertSame(<<<JS
+        $this->assertSame(
+            <<<JS
             import * as Turbo from '@hotwired/turbo';
 
             console.log(Turbo);
@@ -290,7 +311,9 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testLineProcessedIfRequiredPackageIsPresent()
     {
-        $this->saveFile('assets/app.js', <<<JS
+        $this->saveFile(
+            'assets/app.js',
+            <<<JS
             import * as Turbo from '@hotwired/turbo';
 
             console.log(Turbo);
@@ -311,7 +334,8 @@ class AddLinesConfiguratorTest extends TestCase
         ], $composer);
 
         $actualContents = $this->readFile('assets/app.js');
-        $this->assertSame(<<<JS
+        $this->assertSame(
+            <<<JS
             import './bootstrap';
             import * as Turbo from '@hotwired/turbo';
 
@@ -323,7 +347,9 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testLineSkippedIfRequiredPackageVersionIsWrong()
     {
-        $this->saveFile('phpunit.dist.xml', <<<XML
+        $this->saveFile(
+            'phpunit.dist.xml',
+            <<<XML
             <?xml version="1.0" encoding="UTF-8"?>
             <phpunit>
                 <extensions>
@@ -346,7 +372,8 @@ class AddLinesConfiguratorTest extends TestCase
             ],
         ], $composer);
         $actualContents = $this->readFile('phpunit.dist.xml');
-        $this->assertSame(<<<XML
+        $this->assertSame(
+            <<<XML
             <?xml version="1.0" encoding="UTF-8"?>
             <phpunit>
                 <extensions>
@@ -359,7 +386,9 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testLineProcessedIfRequiredPackageVersionIsRight()
     {
-        $this->saveFile('phpunit.dist.xml', <<<XML
+        $this->saveFile(
+            'phpunit.dist.xml',
+            <<<XML
             <?xml version="1.0" encoding="UTF-8"?>
             <phpunit>
                 <extensions>
@@ -383,7 +412,8 @@ class AddLinesConfiguratorTest extends TestCase
         ], $composer);
 
         $actualContents = $this->readFile('phpunit.dist.xml');
-        $this->assertSame(<<<XML
+        $this->assertSame(
+            <<<XML
             <?xml version="1.0" encoding="UTF-8"?>
             <phpunit>
                 <extensions>
@@ -414,7 +444,9 @@ class AddLinesConfiguratorTest extends TestCase
 
     public function testExpandTargetDirWhenUnconfiguring()
     {
-        $this->saveFile('config/file.txt', <<<EOF
+        $this->saveFile(
+            'config/file.txt',
+            <<<EOF
             Line1
             Line2
             EOF
@@ -427,7 +459,8 @@ class AddLinesConfiguratorTest extends TestCase
             ],
         ]);
         $actualContents = $this->readFile('config/file.txt');
-        $this->assertSame(<<<EOF
+        $this->assertSame(
+            <<<EOF
             Line2
             EOF,
             $actualContents

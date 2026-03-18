@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -40,7 +42,8 @@ class BundlesConfiguratorTest extends TestCase
             'FooBundle' => ['dev', 'test'],
             'Symfony\Bundle\FrameworkBundle\FrameworkBundle' => ['all'],
         ], $lock);
-        $this->assertEquals(<<<EOF
+        $this->assertEquals(
+            <<<EOF
             <?php
 
             return [
@@ -55,7 +58,8 @@ class BundlesConfiguratorTest extends TestCase
 
     public function testConfigureWhenBundlesAlreadyExists()
     {
-        $this->saveBundlesFile(<<<EOF
+        $this->saveBundlesFile(
+            <<<EOF
             <?php
 
             return [
@@ -77,7 +81,8 @@ class BundlesConfiguratorTest extends TestCase
             'FooBundle' => ['dev', 'test'],
             'Symfony\Bundle\FrameworkBundle\FrameworkBundle' => ['all'],
         ], $lock);
-        $this->assertEquals(<<<EOF
+        $this->assertEquals(
+            <<<EOF
             <?php
 
             return [
@@ -93,7 +98,8 @@ class BundlesConfiguratorTest extends TestCase
 
     public function testUnconfigure()
     {
-        $this->saveBundlesFile(<<<EOF
+        $this->saveBundlesFile(
+            <<<EOF
             <?php
 
             return [
@@ -116,7 +122,8 @@ class BundlesConfiguratorTest extends TestCase
         $configurator->unconfigure($recipe, [
             'BarBundle' => ['dev', 'all'],
         ], $lock);
-        $this->assertEquals(<<<EOF
+        $this->assertEquals(
+            <<<EOF
             <?php
 
             return [
@@ -144,7 +151,8 @@ class BundlesConfiguratorTest extends TestCase
             FLEX_TEST_DIR
         );
 
-        $this->saveBundlesFile(<<<EOF
+        $this->saveBundlesFile(
+            <<<EOF
             <?php
 
             return [

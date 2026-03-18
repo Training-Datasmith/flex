@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -69,7 +71,8 @@ class ComposerScriptsConfiguratorTest extends TestCase
         $configurator->configure($recipe, [
             'do:cool-stuff' => 'symfony-cmd',
         ], $lock);
-        $this->assertEquals(<<<EOF
+        $this->assertEquals(
+            <<<EOF
             {
                 "scripts": {
                     "auto-scripts": {
@@ -117,7 +120,8 @@ class ComposerScriptsConfiguratorTest extends TestCase
             'do:cool-stuff' => 'symfony-cmd',
             'cache:clear' => 'symfony-cmd',
         ], $lock);
-        $this->assertEquals(<<<EOF
+        $this->assertEquals(
+            <<<EOF
             {
                 "scripts": {
                     "auto-scripts": {

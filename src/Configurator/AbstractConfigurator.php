@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -11,10 +13,8 @@
 
 namespace Symfony\Flex\Configurator;
 
-use Composer\Composer;
 use Composer\IO\IOInterface;
 use Symfony\Flex\Lock;
-use Symfony\Flex\Options;
 use Symfony\Flex\Path;
 use Symfony\Flex\Recipe;
 use Symfony\Flex\Update\RecipeUpdate;

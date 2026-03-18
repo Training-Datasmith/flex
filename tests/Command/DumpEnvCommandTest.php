@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -178,7 +180,9 @@ class DumpEnvCommandTest extends TestCase
         @unlink($envLocalPhp);
 
         file_put_contents($env, 'APP_ENV=dev');
-        file_put_contents($envLocal, <<<EOF
+        file_put_contents(
+            $envLocal,
+            <<<EOF
             APP_ENV=test
             APP_SECRET=abcdefgh123456789
             EOF

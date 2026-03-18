@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -195,7 +197,9 @@ class DockerComposeConfiguratorTest extends TestCase
 
         $this->configurator->configure($this->recipeDb, self::CONFIG_DB, $this->lock);
 
-        $this->assertStringEqualsFile($dockerComposeFile, self::ORIGINAL_CONTENT.<<<'YAML'
+        $this->assertStringEqualsFile(
+            $dockerComposeFile,
+            self::ORIGINAL_CONTENT.<<<'YAML'
 
             ###> doctrine/doctrine-bundle ###
               db:
@@ -304,7 +308,9 @@ class DockerComposeConfiguratorTest extends TestCase
 
         $this->configurator->configure($this->recipeDb, self::CONFIG_DB, $this->lock);
 
-        $this->assertStringEqualsFile($dockerComposeFile, self::ORIGINAL_CONTENT.<<<'YAML'
+        $this->assertStringEqualsFile(
+            $dockerComposeFile,
+            self::ORIGINAL_CONTENT.<<<'YAML'
 
             ###> doctrine/doctrine-bundle ###
               db:
@@ -333,7 +339,8 @@ class DockerComposeConfiguratorTest extends TestCase
 
         $this->configurator->unconfigure($this->recipeDb, self::CONFIG_DB, $this->lock);
         // Not the same original, we have an extra breaks line
-        $this->assertEquals($originalContent.<<<'YAML'
+        $this->assertEquals(
+            $originalContent.<<<'YAML'
 
 
             YAML,
@@ -390,7 +397,9 @@ class DockerComposeConfiguratorTest extends TestCase
 
         $this->configurator->configure($recipe, $config, $this->lock);
 
-        $this->assertStringEqualsFile($dockerComposeFile, self::ORIGINAL_CONTENT.<<<'YAML'
+        $this->assertStringEqualsFile(
+            $dockerComposeFile,
+            self::ORIGINAL_CONTENT.<<<'YAML'
 
             ###> doctrine/doctrine-bundle ###
               db:
@@ -517,7 +526,9 @@ class DockerComposeConfiguratorTest extends TestCase
         $this->configurator->configure($this->recipeDb, self::CONFIG_DB_MULTIPLE_FILES, $this->lock);
 
         foreach ([$dockerComposeFile, $dockerComposeOverrideFile] as $file) {
-            $this->assertStringEqualsFile($file, self::ORIGINAL_CONTENT.<<<'YAML'
+            $this->assertStringEqualsFile(
+                $file,
+                self::ORIGINAL_CONTENT.<<<'YAML'
 
                 ###> doctrine/doctrine-bundle ###
                   db:
@@ -562,7 +573,9 @@ class DockerComposeConfiguratorTest extends TestCase
         $this->configurator->configure($this->recipeDb, self::CONFIG_DB_MULTIPLE_FILES, $this->lock);
 
         foreach ([$dockerComposeFile, $dockerComposeOverrideFile] as $file) {
-            $this->assertStringEqualsFile($file, self::ORIGINAL_CONTENT.<<<'YAML'
+            $this->assertStringEqualsFile(
+                $file,
+                self::ORIGINAL_CONTENT.<<<'YAML'
 
                 ###> doctrine/doctrine-bundle ###
                   db:
@@ -607,7 +620,9 @@ class DockerComposeConfiguratorTest extends TestCase
 
         $this->configurator->configure($this->recipeDb, self::CONFIG_DB, $this->lock);
 
-        $this->assertStringEqualsFile($dockerComposeFile, self::ORIGINAL_CONTENT.<<<'YAML'
+        $this->assertStringEqualsFile(
+            $dockerComposeFile,
+            self::ORIGINAL_CONTENT.<<<'YAML'
 
             ###> doctrine/doctrine-bundle ###
               db:
@@ -642,7 +657,9 @@ class DockerComposeConfiguratorTest extends TestCase
 
         $this->configurator->configure($this->recipeDb, self::CONFIG_DB, $this->lock);
 
-        $this->assertStringEqualsFile($dockerComposeFile, <<<'YAML'
+        $this->assertStringEqualsFile(
+            $dockerComposeFile,
+            <<<'YAML'
 
             services:
             ###> doctrine/doctrine-bundle ###
