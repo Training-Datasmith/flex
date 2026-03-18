@@ -54,43 +54,34 @@ class Flex implements PluginInterface, EventSubscriberInterface
 {
     public static $storedOperations = [];
 
-    /**
-     * @var Composer
-     */
-    private $composer;
+    private ?\Composer\Composer $composer = null;
 
-    /**
-     * @var IOInterface
-     */
-    private $io;
+    private ?\Composer\IO\IOInterface $io = null;
 
     private $config;
-    private $options;
-    private $configurator;
-    private $downloader;
+    private ?\Symfony\Flex\Options $options = null;
+    private ?\Symfony\Flex\Configurator $configurator = null;
+    private ?\Symfony\Flex\Downloader $downloader = null;
 
     /**
      * @var Installer
      */
     private $installer;
-    private $postInstallOutput = [''];
+    private array $postInstallOutput = [''];
     private $operations = [];
-    private $lock;
-    private $displayThanksReminder = 0;
-    private $ignorePreleases = false;
-    private $reinstall;
-    private static $activated = true;
-    private static $aliasResolveCommands = [
+    private ?\Symfony\Flex\Lock $lock = null;
+    private int $displayThanksReminder = 0;
+    private bool $ignorePreleases = false;
+    private ?bool $reinstall = null;
+    private static bool $activated = true;
+    private static array $aliasResolveCommands = [
         'require' => true,
         'update' => false,
         'remove' => false,
     ];
-    private $filter;
+    private ?\Symfony\Flex\PackageFilter $filter = null;
 
-    /**
-     * @return void
-     */
-    public function activate(Composer $composer, IOInterface $io)
+    public function activate(Composer $composer, IOInterface $io): void
     {
         if (!\extension_loaded('openssl')) {
             self::$activated = false;
@@ -102,8 +93,8 @@ class Flex implements PluginInterface, EventSubscriberInterface
         // to avoid issues when Flex is upgraded, we load all PHP classes now
         // that way, we are sure to use all classes from the same version
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(__DIR__, \FilesystemIterator::SKIP_DOTS)) as $file) {
-            if ('.php' === substr($file, -4)) {
-                class_exists(__NAMESPACE__.str_replace('/', '\\', substr($file, \strlen(__DIR__), -4)));
+            if (str_ends_with((string) $file, '.php')) {
+                class_exists(__NAMESPACE__.str_replace('/', '\\', substr((string) $file, \strlen(__DIR__), -4)));
             }
         }
 
@@ -146,14 +137,18 @@ class Flex implements PluginInterface, EventSubscriberInterface
         $backtrace = $this->configureInstaller();
 
         foreach ($backtrace as $trace) {
-            if (!isset($trace['object']) || !isset($trace['args'][0])) {
+            if (!isset($trace['object'])) {
                 continue;
             }
-
-            if (!$trace['object'] instanceof Application || !$trace['args'][0] instanceof ArgvInput) {
+            if (!isset($trace['args'][0])) {
                 continue;
             }
-
+            if (!$trace['object'] instanceof Application) {
+                continue;
+            }
+            if (!$trace['args'][0] instanceof ArgvInput) {
+                continue;
+            }
             // In Composer 1.0.*, $input knows about option and argument definitions
             // Since Composer >=1.1, $input contains only raw values
             $input = $trace['args'][0];
@@ -164,7 +159,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
             try {
                 $command = $input->getFirstArgument();
                 $command = $command ? $app->find($command)->getName() : null;
-            } catch (\InvalidArgumentException $e) {
+            } catch (\InvalidArgumentException) {
             }
 
             if ('create-project' === $command) {
@@ -199,17 +194,14 @@ class Flex implements PluginInterface, EventSubscriberInterface
             break;
         }
 
-        $symfonyRequire = preg_replace('/\.x$/', '.x-dev', getenv('SYMFONY_REQUIRE') ?: ($composer->getPackage()->getExtra()['symfony']['require'] ?? ''));
+        $symfonyRequire = preg_replace('/\.x$/', '.x-dev', (string) getenv('SYMFONY_REQUIRE') ?: ($composer->getPackage()->getExtra()['symfony']['require'] ?? ''));
 
         if ($symfonyRequire || $this->ignorePreleases) {
             $this->filter = new PackageFilter($io, $symfonyRequire, $this->downloader, $this->ignorePreleases);
         }
     }
 
-    /**
-     * @return void
-     */
-    public function deactivate(Composer $composer, IOInterface $io)
+    public function deactivate(Composer $composer, IOInterface $io): void
     {
         // Using `Flex::` instead of `self::` to avoid issues when
         // composer renames plugin classes when upgrading them
@@ -217,7 +209,10 @@ class Flex implements PluginInterface, EventSubscriberInterface
         self::$activated = false;
     }
 
-    public function configureInstaller()
+    /**
+     * @return array{function: string, line?: int, file?: string, class?: class-string, type?: ('->' | '::'), args?: list<mixed>, object?: object}[]
+     */
+    public function configureInstaller(): array
     {
         $backtrace = debug_backtrace();
         foreach ($backtrace as $trace) {
@@ -233,7 +228,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
         return $backtrace;
     }
 
-    public function configureProject(Event $event)
+    public function configureProject(Event $event): void
     {
         if (!$this->downloader->isEnabled()) {
             $this->io->writeError('<warning>Project configuration is disabled: "symfony/flex" not found in the root composer.json</>');
@@ -263,21 +258,21 @@ class Flex implements PluginInterface, EventSubscriberInterface
         $this->updateComposerLock();
     }
 
-    public function recordFlexInstall(PackageEvent $event)
+    public function recordFlexInstall(PackageEvent $event): void
     {
         if (null === $this->reinstall && 'symfony/flex' === $event->getOperation()->getPackage()->getName()) {
             $this->reinstall = true;
         }
     }
 
-    public function record(PackageEvent $event)
+    public function record(PackageEvent $event): void
     {
         if ($this->shouldRecordOperation($event->getOperation(), $event->isDevMode(), $event->getComposer())) {
             $this->operations[] = $event->getOperation();
         }
     }
 
-    public function recordOperations(InstallerEvent $event)
+    public function recordOperations(InstallerEvent $event): void
     {
         if (!$event->isExecutingOperations()) {
             return;
@@ -293,9 +288,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
             $packages[] = new Package($name, $versionParser->normalize($info['version']), $info['version']);
         }
 
-        $transation = \Closure::bind(function () use ($packages, $event) {
-            return new Transaction($packages, $event->getTransaction()->resultPackageMap);
-        }, null, Transaction::class)();
+        $transation = \Closure::bind(fn() => new Transaction($packages, $event->getTransaction()->resultPackageMap), null, Transaction::class)();
 
         foreach ($transation->getOperations() as $operation) {
             if (!$operation instanceof UninstallOperation && $this->shouldRecordOperation($operation, $event->isDevMode(), $event->getComposer())) {
@@ -304,7 +297,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
         }
     }
 
-    public function update(Event $event, $operations = [])
+    public function update(Event $event, $operations = []): void
     {
         if ($operations) {
             $this->operations = $operations;
@@ -317,7 +310,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
         $json = JsonFile::parseJson($contents);
 
         if (!$this->reinstall && !isset($json['flex-require']) && !isset($json['flex-require-dev'])) {
-            $this->unpack($event);
+            $this->unpack();
 
             return;
         }
@@ -347,7 +340,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
         $this->reinstall($event);
     }
 
-    public function install(Event $event)
+    public function install(Event $event): void
     {
         $rootDir = $this->options->get('root-dir');
         $runtime = $this->options->get('runtime');
@@ -405,11 +398,11 @@ class Flex implements PluginInterface, EventSubscriberInterface
     (defaults to <comment>n</>): ', $recipe->getURL());
                 $answer = $this->io->askAndValidate(
                     $question,
-                    function ($value) {
+                    function ($value): string {
                         if (null === $value) {
                             return 'n';
                         }
-                        $value = strtolower($value[0]);
+                        $value = strtolower((string) $value[0]);
                         if (!\in_array($value, ['y', 'n', 'a', 'p'])) {
                             throw new \InvalidArgumentException('Invalid choice.');
                         }
@@ -495,7 +488,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
         }
     }
 
-    private function synchronizePackageJson(string $rootDir)
+    private function synchronizePackageJson(string $rootDir): void
     {
         if (!($this->composer->getPackage()->getExtra()['symfony/flex']['synchronize_package_json'] ?? true)) {
             $this->io->writeError('<info>Skip synchronizing package.json with PHP packages</>');
@@ -526,22 +519,19 @@ class Flex implements PluginInterface, EventSubscriberInterface
         }
     }
 
-    /**
-     * @return void
-     */
-    public function uninstall(Composer $composer, IOInterface $io)
+    public function uninstall(Composer $composer, IOInterface $io): void
     {
         $this->lock->delete();
     }
 
-    public function enableThanksReminder()
+    public function enableThanksReminder(): void
     {
         if (1 === $this->displayThanksReminder) {
             $this->displayThanksReminder = !class_exists(Thanks::class, false) ? 2 : 0;
         }
     }
 
-    public function executeAutoScripts(Event $event)
+    public function executeAutoScripts(Event $event): void
     {
         $event->stopPropagation();
 
@@ -668,7 +658,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
         return array_merge($flexRecipe, $packRecipes, $metaRecipes, array_filter($recipes));
     }
 
-    public function truncatePackages(PrePoolCreateEvent $event)
+    public function truncatePackages(PrePoolCreateEvent $event): void
     {
         if (!$this->filter) {
             return;
@@ -763,7 +753,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
         return false;
     }
 
-    private function updateComposerLock()
+    private function updateComposerLock(): void
     {
         $lock = substr(Factory::getComposerFile(), 0, -4).'lock';
         $composerJson = file_get_contents(Factory::getComposerFile());
@@ -774,34 +764,30 @@ class Flex implements PluginInterface, EventSubscriberInterface
         $lockFile->write($lockData);
     }
 
-    private function unpack(Event $event)
+    private function unpack(): void
     {
         $jsonPath = Factory::getComposerFile();
         $json = JsonFile::parseJson(file_get_contents($jsonPath));
         $sortPackages = $this->composer->getConfig()->get('sort-packages');
         $unpackOp = new Operation(true, $sortPackages);
-
         foreach (['require', 'require-dev'] as $type) {
             foreach ($json[$type] ?? [] as $package => $constraint) {
                 $unpackOp->addPackage($package, $constraint, 'require-dev' === $type);
             }
         }
-
-        $unpacker = new Unpacker($this->composer, new PackageResolver($this->downloader), false); // 3rd arg to ease upgrading from flex <= 2.6.0
+        $unpacker = new Unpacker($this->composer, new PackageResolver($this->downloader), false);
+        // 3rd arg to ease upgrading from flex <= 2.6.0
         $result = $unpacker->unpack($unpackOp);
-
         if (!$result->getUnpacked()) {
             return;
         }
-
         foreach ($result->getUnpacked() as $pkg) {
             $this->io->writeError(\sprintf('  - Unpacked <info>%s</>', $pkg->getName()));
         }
-
         $unpacker->updateLock($result, $this->io);
     }
 
-    private function reinstall(Event $event)
+    private function reinstall(Event $event): void
     {
         $this->reinstall = false;
         $event->stopPropagation();
@@ -839,7 +825,7 @@ class Flex implements PluginInterface, EventSubscriberInterface
             return [];
         }
 
-        $events = [
+        return [
             PackageEvents::POST_PACKAGE_UPDATE => 'enableThanksReminder',
             PackageEvents::POST_PACKAGE_INSTALL => 'recordFlexInstall',
             PackageEvents::POST_PACKAGE_UNINSTALL => 'record',
@@ -851,8 +837,6 @@ class Flex implements PluginInterface, EventSubscriberInterface
             ScriptEvents::POST_UPDATE_CMD => 'update',
             'auto-scripts' => 'executeAutoScripts',
         ];
-
-        return $events;
     }
 
     private function doesRecipeConflict(array $recipeData, OperationInterface $operation): bool

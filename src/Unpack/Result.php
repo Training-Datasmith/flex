@@ -15,8 +15,8 @@ use Composer\Package\PackageInterface;
 
 class Result
 {
-    private $unpacked = [];
-    private $required = [];
+    private array $unpacked = [];
+    private array $required = [];
 
     public function addUnpacked(PackageInterface $package): bool
     {
@@ -39,7 +39,7 @@ class Result
         return $this->unpacked;
     }
 
-    public function addRequired(string $package)
+    public function addRequired(string $package): void
     {
         $this->required[] = $package;
     }

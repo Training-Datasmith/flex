@@ -25,21 +25,15 @@ use Composer\Semver\VersionParser;
 class PackageFilter
 {
     private $versions;
-    private $versionParser;
-    private $symfonyRequire;
+    private readonly \Composer\Semver\VersionParser $versionParser;
     private $symfonyConstraints;
-    private $downloader;
     private $io;
-    private $ignorePreleases;
 
-    public function __construct(IOInterface $io, string $symfonyRequire, Downloader $downloader, bool $ignorePreleases = false)
+    public function __construct(IOInterface $io, private readonly string $symfonyRequire, private Downloader $downloader, private readonly bool $ignorePreleases = false)
     {
         $this->versionParser = new VersionParser();
-        $this->symfonyRequire = $symfonyRequire;
-        $this->symfonyConstraints = '' !== $symfonyRequire ? $this->versionParser->parseConstraints($symfonyRequire) : null;
-        $this->downloader = $downloader;
+        $this->symfonyConstraints = '' !== $this->symfonyRequire ? $this->versionParser->parseConstraints($this->symfonyRequire) : null;
         $this->io = $io;
-        $this->ignorePreleases = $ignorePreleases;
     }
 
     /**
@@ -119,7 +113,7 @@ class PackageFilter
         }
 
         if ($symfonyPackages && !$oneSymfony) {
-            $filteredPackages = array_merge($filteredPackages, $symfonyPackages);
+            return array_merge($filteredPackages, $symfonyPackages);
         }
 
         return $filteredPackages;
@@ -142,7 +136,7 @@ class PackageFilter
             foreach ($vers as $i => $v) {
                 if (!isset($okVersions[$v])) {
                     $okVersions[$v] = false;
-                    $w = '.x' === substr($v, -2) ? $versions['next'] : $v;
+                    $w = str_ends_with((string) $v, '.x') ? $versions['next'] : $v;
 
                     for ($j = 0; $j < 60; ++$j) {
                         if ($this->symfonyConstraints->matches(new Constraint('==', $w.'.'.$j.'.0'))) {

@@ -16,20 +16,14 @@ namespace Symfony\Flex;
  */
 class Response implements \JsonSerializable
 {
-    private $body;
-    private $origHeaders;
-    private $headers;
-    private $code;
+    private array $headers;
 
     /**
      * @param mixed $body The response as JSON
      */
-    public function __construct($body, array $headers = [], int $code = 200)
+    public function __construct(private $body, private readonly array $origHeaders = [], private readonly int $code = 200)
     {
-        $this->body = $body;
-        $this->origHeaders = $headers;
-        $this->headers = $this->parseHeaders($headers);
-        $this->code = $code;
+        $this->headers = $this->parseHeaders($this->origHeaders);
     }
 
     public function getStatusCode(): int
@@ -75,9 +69,9 @@ class Response implements \JsonSerializable
     {
         $values = [];
         foreach (array_reverse($headers) as $header) {
-            if (preg_match('{^([^:]++):\s*(.+?)\s*$}i', $header, $match)) {
+            if (preg_match('{^([^:]++):\s*(.+?)\s*$}i', (string) $header, $match)) {
                 $values[strtolower($match[1])][] = $match[2];
-            } elseif (preg_match('{^HTTP/}i', $header)) {
+            } elseif (preg_match('{^HTTP/}i', (string) $header)) {
                 break;
             }
         }

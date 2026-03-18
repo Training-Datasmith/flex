@@ -23,15 +23,12 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class EnvConfigurator extends AbstractConfigurator
 {
-    private string $suffix;
-
-    public function __construct(Composer $composer, IOInterface $io, Options $options, string $suffix = '')
+    public function __construct(Composer $composer, IOInterface $io, Options $options, private readonly string $suffix = '')
     {
         parent::__construct($composer, $io, $options);
-        $this->suffix = $suffix;
     }
 
-    public function configure(Recipe $recipe, $vars, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $vars, Lock $lock, array $options = []): void
     {
         $this->write('Adding environment variable defaults'.('' === $this->suffix ? '' : ' ('.$this->suffix.')'));
 
@@ -46,10 +43,10 @@ class EnvConfigurator extends AbstractConfigurator
         }
     }
 
-    public function unconfigure(Recipe $recipe, $vars, Lock $lock)
+    public function unconfigure(Recipe $recipe, $vars, Lock $lock): void
     {
-        $this->unconfigureEnvFiles($recipe, $vars);
-        $this->unconfigurePhpUnit($recipe, $vars);
+        $this->unconfigureEnvFiles($recipe);
+        $this->unconfigurePhpUnit($recipe);
     }
 
     public function update(RecipeUpdate $recipeUpdate, array $originalConfig, array $newConfig): void
@@ -63,7 +60,7 @@ class EnvConfigurator extends AbstractConfigurator
         );
     }
 
-    private function configureEnvDist(Recipe $recipe, $vars, bool $update)
+    private function configureEnvDist(Recipe $recipe, $vars, bool $update): void
     {
         $dotenvPath = $this->options->get('runtime')['dotenv_path'] ?? '.env';
         $files = '' === $this->suffix ? [$dotenvPath.'.dist', $dotenvPath] : [$dotenvPath.'.'.$this->suffix];
@@ -82,7 +79,7 @@ class EnvConfigurator extends AbstractConfigurator
             foreach ($vars as $key => $value) {
                 $existingValue = $update ? $this->findExistingValue($key, $env, $recipe) : null;
                 $value = $this->evaluateValue($value, $existingValue);
-                if ('#' === $key[0] && is_numeric(substr($key, 1))) {
+                if ('#' === $key[0] && is_numeric(substr((string) $key, 1))) {
                     if ('' === $value) {
                         $data .= "#\n";
                     } else {
@@ -93,7 +90,7 @@ class EnvConfigurator extends AbstractConfigurator
                 }
 
                 $value = $this->options->expandTargetDir($value);
-                if (false !== strpbrk($value, " \t\n&!\"")) {
+                if (false !== strpbrk((string) $value, " \t\n&!\"")) {
                     $value = '"'.str_replace(['\\', '"', "\t", "\n"], ['\\\\', '\\"', '\t', '\n'], $value).'"';
                 }
                 $data .= "$key=$value\n";
@@ -106,7 +103,7 @@ class EnvConfigurator extends AbstractConfigurator
         }
     }
 
-    private function configurePhpUnit(Recipe $recipe, $vars, bool $update)
+    private function configurePhpUnit(Recipe $recipe, $vars, bool $update): void
     {
         foreach (['phpunit.xml.dist', 'phpunit.dist.xml', 'phpunit.xml'] as $file) {
             $phpunit = $this->options->get('root-dir').'/'.$file;
@@ -122,14 +119,14 @@ class EnvConfigurator extends AbstractConfigurator
             foreach ($vars as $key => $value) {
                 $value = $this->evaluateValue($value);
                 if ('#' === $key[0]) {
-                    if (is_numeric(substr($key, 1))) {
+                    if (is_numeric(substr((string) $key, 1))) {
                         $doc = new \DOMDocument();
                         $data .= '        '.$doc->saveXML($doc->createComment(' '.$value.' '))."\n";
                     } else {
                         $value = $this->options->expandTargetDir($value);
                         $doc = new \DOMDocument();
                         $fragment = $doc->createElement('env');
-                        $fragment->setAttribute('name', substr($key, 1));
+                        $fragment->setAttribute('name', substr((string) $key, 1));
                         $fragment->setAttribute('value', $value);
                         $data .= '        '.str_replace(['<', '/>'], ['<!-- ', ' -->'], $doc->saveXML($fragment))."\n";
                     }
@@ -150,7 +147,7 @@ class EnvConfigurator extends AbstractConfigurator
         }
     }
 
-    private function unconfigureEnvFiles(Recipe $recipe, $vars)
+    private function unconfigureEnvFiles(Recipe $recipe): void
     {
         $dotenvPath = $this->options->get('runtime')['dotenv_path'] ?? '.env';
         $files = '' === $this->suffix ? [$dotenvPath, $dotenvPath.'.dist'] : [$dotenvPath.'.'.$this->suffix];
@@ -171,7 +168,7 @@ class EnvConfigurator extends AbstractConfigurator
         }
     }
 
-    private function unconfigurePhpUnit(Recipe $recipe, $vars)
+    private function unconfigurePhpUnit(Recipe $recipe): void
     {
         foreach (['phpunit.dist.xml', 'phpunit.xml.dist', 'phpunit.xml'] as $file) {
             $phpunit = $this->options->get('root-dir').'/'.$file;
@@ -204,7 +201,7 @@ class EnvConfigurator extends AbstractConfigurator
 
             return $this->generateRandomBytes();
         }
-        if (preg_match('~^%generate\(secret,\s*([0-9]+)\)%$~', $value, $matches)) {
+        if (preg_match('~^%generate\(secret,\s*([0-9]+)\)%$~', (string) $value, $matches)) {
             if (null !== $originalValue) {
                 return $originalValue;
             }
@@ -215,7 +212,7 @@ class EnvConfigurator extends AbstractConfigurator
         return $value;
     }
 
-    private function generateRandomBytes($length = 16)
+    private function generateRandomBytes($length = 16): string
     {
         return bin2hex(random_bytes($length));
     }

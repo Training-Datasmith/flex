@@ -20,17 +20,15 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class ContainerConfigurator extends AbstractConfigurator
 {
-    public function configure(Recipe $recipe, $parameters, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $parameters, Lock $lock, array $options = []): void
     {
         $this->write('Setting parameters');
         $contents = $this->configureParameters($parameters);
 
-        if (null !== $contents) {
-            file_put_contents($this->options->get('root-dir').'/'.$this->getServicesPath(), $contents);
-        }
+        file_put_contents($this->options->get('root-dir').'/'.$this->getServicesPath(), $contents);
     }
 
-    public function unconfigure(Recipe $recipe, $parameters, Lock $lock)
+    public function unconfigure(Recipe $recipe, $parameters, Lock $lock): void
     {
         $this->write('Unsetting parameters');
         $target = $this->options->get('root-dir').'/'.$this->getServicesPath();
@@ -84,7 +82,7 @@ class ContainerConfigurator extends AbstractConfigurator
             }
             foreach ($parameters as $key => $value) {
                 $matches = [];
-                if (preg_match(\sprintf('/^\s+%s\:/', preg_quote($key, '/')), $line, $matches)) {
+                if (preg_match(\sprintf('/^\s+%s\:/', preg_quote((string) $key, '/')), $line, $matches)) {
                     if ($update) {
                         $lines[$i] = substr($line, 0, \strlen($matches[0])).' '.str_replace("'", "''", $value)."\n";
                     }
@@ -128,13 +126,13 @@ class ContainerConfigurator extends AbstractConfigurator
         return $lines;
     }
 
-    private function removeParameters($level, $params, $line)
+    private function removeParameters(int|float $level, array $params, $line): bool
     {
         foreach ($params as $key => $value) {
             if (\is_array($value) && $this->removeParameters($level + 1, $value, $line)) {
                 return true;
             }
-            if (preg_match(\sprintf('/^(\s{%d}|\t{%d})+%s\:/', 4 * $level, $level, preg_quote($key, '/')), $line)) {
+            if (preg_match(\sprintf('/^(\s{%d}|\t{%d})+%s\:/', 4 * $level, $level, preg_quote((string) $key, '/')), (string) $line)) {
                 return true;
             }
         }
@@ -142,7 +140,7 @@ class ContainerConfigurator extends AbstractConfigurator
         return false;
     }
 
-    private function dumpYaml($level, $array): string
+    private function dumpYaml(int|float $level, array $array): string
     {
         $line = '';
         foreach ($array as $key => $value) {

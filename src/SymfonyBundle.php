@@ -19,15 +19,11 @@ use Composer\Package\PackageInterface;
  */
 class SymfonyBundle
 {
-    private $package;
-    private $operation;
-    private $vendorDir;
+    private readonly string $vendorDir;
 
-    public function __construct(Composer $composer, PackageInterface $package, string $operation)
+    public function __construct(Composer $composer, private readonly PackageInterface $package, private readonly string $operation)
     {
-        $this->package = $package;
-        $this->operation = $operation;
-        $this->vendorDir = rtrim($composer->getConfig()->get('vendor-dir'), '/');
+        $this->vendorDir = rtrim((string) $composer->getConfig()->get('vendor-dir'), '/');
     }
 
     public function getClassNames(): array
@@ -81,7 +77,10 @@ class SymfonyBundle
         $classes = [$class.$suffix];
         $acc = '';
         foreach (\array_slice($parts, 0, -1) as $part) {
-            if ('Bundle' === $part || ($isSyliusPlugin && 'Plugin' === $part)) {
+            if ('Bundle' === $part) {
+                continue;
+            }
+            if ($isSyliusPlugin && 'Plugin' === $part) {
                 continue;
             }
             $classes[] = $class.$part.$suffix;

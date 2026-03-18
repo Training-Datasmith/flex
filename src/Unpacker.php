@@ -27,18 +27,14 @@ use Symfony\Flex\Unpack\Result;
 
 class Unpacker
 {
-    private $composer;
-    private $resolver;
-    private $versionParser;
+    private readonly \Composer\Semver\VersionParser $versionParser;
 
-    public function __construct(Composer $composer, PackageResolver $resolver)
+    public function __construct(private readonly Composer $composer, private readonly PackageResolver $resolver)
     {
-        $this->composer = $composer;
-        $this->resolver = $resolver;
         $this->versionParser = new VersionParser();
     }
 
-    public function unpack(Operation $op, ?Result $result = null, &$links = [], bool $devRequire = false): Result
+    public function unpack(Operation $op, ?Result $result = null, array &$links = [], bool $devRequire = false): Result
     {
         if (null === $result) {
             $result = new Result();
@@ -47,7 +43,7 @@ class Unpacker
         $localRepo = $this->composer->getRepositoryManager()->getLocalRepository();
         foreach ($op->getPackages() as $package) {
             $pkg = $localRepo->findPackage($package['name'], '*');
-            $pkg = $pkg ?? $this->composer->getRepositoryManager()->findPackage($package['name'], $package['version'] ?: '*');
+            $pkg ??= $this->composer->getRepositoryManager()->findPackage($package['name'], $package['version'] ?: '*');
 
             // not unpackable or no --unpack flag or empty packs (markers)
             if (

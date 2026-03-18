@@ -32,20 +32,14 @@ use Symfony\Flex\Update\RecipeUpdate;
 
 class UpdateRecipesCommand extends BaseCommand
 {
-    /** @var Flex */
-    private $flex;
-    private $downloader;
-    private $configurator;
-    private $rootDir;
-    private $githubApi;
-    private $processExecutor;
+    private readonly \Symfony\Flex\GithubApi $githubApi;
+    private ?\Composer\Util\ProcessExecutor $processExecutor = null;
 
-    public function __construct(/* cannot be type-hinted */ $flex, Downloader $downloader, $httpDownloader, Configurator $configurator, string $rootDir)
+    /**
+     * @param Flex $flex
+     */
+    public function __construct(/* cannot be type-hinted */ private $flex, private readonly Downloader $downloader, $httpDownloader, private readonly Configurator $configurator, private readonly string $rootDir)
     {
-        $this->flex = $flex;
-        $this->downloader = $downloader;
-        $this->configurator = $configurator;
-        $this->rootDir = $rootDir;
         $this->githubApi = new GithubApi($httpDownloader);
 
         parent::__construct();
@@ -69,7 +63,7 @@ class UpdateRecipesCommand extends BaseCommand
         }
 
         $io = $this->getIO();
-        if (!$this->isIndexClean($io)) {
+        if (!$this->isIndexClean()) {
             $io->write([
                 '  Cannot run <comment>recipes:update</comment>: Your git index contains uncommitted changes.',
                 '  Please commit or stash them and try again!',
@@ -315,9 +309,7 @@ class UpdateRecipesCommand extends BaseCommand
             return null;
         }
 
-        $newerRecipeVersions = array_filter($recipeVersions, function ($version) use ($recipeData) {
-            return version_compare($version, $recipeData['version'], '>');
-        });
+        $newerRecipeVersions = array_filter($recipeVersions, fn($version) => version_compare($version, $recipeData['version'], '>'));
 
         $newCommits = $currentRecipeVersionData['new_commits'];
         foreach ($newerRecipeVersions as $newerRecipeVersion) {
@@ -392,15 +384,13 @@ class UpdateRecipesCommand extends BaseCommand
         return $outdatedRecipes[$choice];
     }
 
-    private function isIndexClean(IOInterface $io): bool
+    private function isIndexClean(): bool
     {
         $output = '';
-
         $this->getProcessExecutor()->execute('git status --porcelain --untracked-files=no', $output, $this->rootDir);
         if ('' !== trim($output)) {
             return false;
         }
-
         return true;
     }
 

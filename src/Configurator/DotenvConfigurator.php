@@ -17,7 +17,7 @@ use Symfony\Flex\Update\RecipeUpdate;
 
 class DotenvConfigurator extends AbstractConfigurator
 {
-    public function configure(Recipe $recipe, $vars, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $vars, Lock $lock, array $options = []): void
     {
         foreach ($vars as $suffix => $vars) {
             $configurator = new EnvConfigurator($this->composer, $this->io, $this->options, $suffix);
@@ -25,7 +25,7 @@ class DotenvConfigurator extends AbstractConfigurator
         }
     }
 
-    public function unconfigure(Recipe $recipe, $vars, Lock $lock)
+    public function unconfigure(Recipe $recipe, $vars, Lock $lock): void
     {
         foreach ($vars as $suffix => $vars) {
             $configurator = new EnvConfigurator($this->composer, $this->io, $this->options, $suffix);

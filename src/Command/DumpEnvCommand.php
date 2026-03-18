@@ -23,12 +23,10 @@ use Symfony\Flex\Options;
 class DumpEnvCommand extends BaseCommand
 {
     private $config;
-    private $options;
 
-    public function __construct(Config $config, Options $options)
+    public function __construct(Config $config, private readonly Options $options)
     {
         $this->config = $config;
-        $this->options = $options;
 
         parent::__construct();
     }

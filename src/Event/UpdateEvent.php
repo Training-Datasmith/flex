@@ -16,16 +16,9 @@ use Composer\Script\ScriptEvents;
 
 class UpdateEvent extends Event
 {
-    private $force;
-    private $reset;
-    private $assumeYesForPrompts;
-
-    public function __construct(bool $force, bool $reset, bool $assumeYesForPrompts)
+    public function __construct(private readonly bool $force, private readonly bool $reset, private readonly bool $assumeYesForPrompts)
     {
         $this->name = ScriptEvents::POST_UPDATE_CMD;
-        $this->force = $force;
-        $this->reset = $reset;
-        $this->assumeYesForPrompts = $assumeYesForPrompts;
     }
 
     public function force(): bool

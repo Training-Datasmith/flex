@@ -13,17 +13,8 @@ namespace Symfony\Flex\Update;
 
 class RecipePatch
 {
-    private $patch;
-    private $blobs;
-    private $deletedFiles;
-    private $removedPatches;
-
-    public function __construct(string $patch, array $blobs, array $deletedFiles, array $removedPatches = [])
+    public function __construct(private readonly string $patch, private readonly array $blobs, private readonly array $deletedFiles, private readonly array $removedPatches = [])
     {
-        $this->patch = $patch;
-        $this->blobs = $blobs;
-        $this->deletedFiles = $deletedFiles;
-        $this->removedPatches = $removedPatches;
     }
 
     public function getPatch(): string

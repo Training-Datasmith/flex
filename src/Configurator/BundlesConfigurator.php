@@ -20,14 +20,14 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class BundlesConfigurator extends AbstractConfigurator
 {
-    public function configure(Recipe $recipe, $bundles, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $bundles, Lock $lock, array $options = []): void
     {
         $this->write('Enabling the package as a Symfony bundle');
         $registered = $this->configureBundles($bundles);
         $this->dump($this->getConfFile(), $registered);
     }
 
-    public function unconfigure(Recipe $recipe, $bundles, Lock $lock)
+    public function unconfigure(Recipe $recipe, $bundles, Lock $lock): void
     {
         $this->write('Disabling the Symfony bundle');
         $file = $this->getConfFile();
@@ -91,7 +91,7 @@ class BundlesConfigurator extends AbstractConfigurator
     private function prepareBundles(array $bundles): array
     {
         foreach ($bundles as $class => $envs) {
-            $bundles[ltrim($class, '\\')] = $envs;
+            $bundles[ltrim((string) $class, '\\')] = $envs;
         }
 
         return $bundles;
@@ -101,13 +101,13 @@ class BundlesConfigurator extends AbstractConfigurator
     {
         $bundles = file_exists($file) ? (require $file) : [];
         if (!\is_array($bundles)) {
-            $bundles = [];
+            return [];
         }
 
         return $bundles;
     }
 
-    private function dump(string $file, array $bundles)
+    private function dump(string $file, array $bundles): void
     {
         $contents = $this->buildContents($bundles);
 
@@ -133,9 +133,8 @@ class BundlesConfigurator extends AbstractConfigurator
             }
             $contents = substr($contents, 0, -2)."],\n";
         }
-        $contents .= "];\n";
 
-        return $contents;
+        return $contents . "];\n";
     }
 
     private function getConfFile(): string

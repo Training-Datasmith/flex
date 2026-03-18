@@ -24,17 +24,11 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 abstract class AbstractConfigurator
 {
-    protected $composer;
-    protected $io;
-    protected $options;
-    protected $path;
+    protected \Symfony\Flex\Path $path;
 
-    public function __construct(Composer $composer, IOInterface $io, Options $options)
+    public function __construct(protected \Composer\Composer $composer, protected \Composer\IO\IOInterface $io, protected \Symfony\Flex\Options $options)
     {
-        $this->composer = $composer;
-        $this->io = $io;
-        $this->options = $options;
-        $this->path = new Path($options->get('root-dir'));
+        $this->path = new Path($this->options->get('root-dir'));
     }
 
     abstract public function configure(Recipe $recipe, $config, Lock $lock, array $options = []);

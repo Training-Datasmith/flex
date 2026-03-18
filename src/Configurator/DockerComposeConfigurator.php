@@ -29,7 +29,7 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class DockerComposeConfigurator extends AbstractConfigurator
 {
-    private $filesystem;
+    private readonly \Symfony\Component\Filesystem\Filesystem $filesystem;
 
     public static $configureDockerRecipes;
 
@@ -40,7 +40,7 @@ class DockerComposeConfigurator extends AbstractConfigurator
         $this->filesystem = new Filesystem();
     }
 
-    public function configure(Recipe $recipe, $config, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $config, Lock $lock, array $options = []): void
     {
         if (!self::shouldConfigureDockerRecipe($this->composer, $this->io, $recipe)) {
             return;
@@ -51,7 +51,7 @@ class DockerComposeConfigurator extends AbstractConfigurator
         $this->write('Docker Compose definitions have been modified. Please run "docker compose up --build" again to apply the changes.');
     }
 
-    public function unconfigure(Recipe $recipe, $config, Lock $lock)
+    public function unconfigure(Recipe $recipe, $config, Lock $lock): void
     {
         $rootDir = $this->options->get('root-dir');
         foreach ($this->normalizeConfig($config) as $file => $extra) {
@@ -67,13 +67,13 @@ class DockerComposeConfigurator extends AbstractConfigurator
             }
 
             foreach ($extra as $key => $value) {
-                if (0 === preg_match(\sprintf('{^%s:[ \t\r\n]*([ \t]+\w|#)}m', $key), $contents, $matches)) {
-                    $contents = preg_replace(\sprintf('{\n?^%s:[ \t\r\n]*}sm', $key), '', $contents, -1, $count);
+                if (0 === preg_match(\sprintf('{^%s:[ \t\r\n]*([ \t]+\w|#)}m', $key), (string) $contents, $matches)) {
+                    $contents = preg_replace(\sprintf('{\n?^%s:[ \t\r\n]*}sm', $key), '', (string) $contents, -1, $count);
                 }
             }
 
             $this->write(\sprintf('Removing Docker Compose entries from "%s"', $dockerComposeFile));
-            file_put_contents($dockerComposeFile, ltrim($contents, "\n"));
+            file_put_contents($dockerComposeFile, ltrim((string) $contents, "\n"));
         }
 
         $this->write('Docker Compose definitions have been modified. Please run "docker compose up" again to apply the changes.');
@@ -151,12 +151,12 @@ class DockerComposeConfigurator extends AbstractConfigurator
                 return ['compose.yaml' => $config];
             }
 
-            if (!str_starts_with($key, 'docker-')) {
+            if (!str_starts_with((string) $key, 'docker-')) {
                 continue;
             }
 
             // If the recipe still use the legacy "docker-compose.yml" names, remove the "docker-" prefix and change the extension
-            $newKey = pathinfo(substr($key, 7), \PATHINFO_FILENAME).'.yaml';
+            $newKey = pathinfo(substr((string) $key, 7), \PATHINFO_FILENAME).'.yaml';
             $config[$newKey] = $val;
             unset($config[$key]);
         }
@@ -173,7 +173,7 @@ class DockerComposeConfigurator extends AbstractConfigurator
             $filenameToFind = pathinfo($file, \PATHINFO_FILENAME);
             $separator = $_SERVER['COMPOSE_PATH_SEPARATOR'] ?? ('\\' === \DIRECTORY_SEPARATOR ? ';' : ':');
 
-            $files = explode($separator, $_SERVER['COMPOSE_FILE']);
+            $files = explode($separator, (string) $_SERVER['COMPOSE_FILE']);
             foreach ($files as $f) {
                 $filename = pathinfo($f, \PATHINFO_FILENAME);
                 if ($filename !== $filenameToFind && "docker-$filenameToFind" !== $filename) {
@@ -211,7 +211,7 @@ class DockerComposeConfigurator extends AbstractConfigurator
         return null;
     }
 
-    private function parse($level, $indent, $services): string
+    private function parse(int|float $level, $indent, $services): string
     {
         $line = '';
         foreach ($services as $key => $value) {
@@ -258,9 +258,11 @@ class DockerComposeConfigurator extends AbstractConfigurator
                 if (null !== $node) {
                     $nodesLines[$node][$i] = $line;
                 }
-
                 // Skip blank lines and comments
-                if (('' !== $ltrimedLine && str_starts_with($ltrimedLine, '#')) || '' === trim($line)) {
+                if ('' !== $ltrimedLine && str_starts_with($ltrimedLine, '#')) {
+                    continue;
+                }
+                if ('' === trim($line)) {
                     continue;
                 }
 
@@ -331,9 +333,7 @@ class DockerComposeConfigurator extends AbstractConfigurator
             return [];
         }
 
-        $files = array_filter(array_map(function ($file) use ($rootDir) {
-            return $this->findDockerComposeFile($rootDir, $file);
-        }, array_keys($config)));
+        $files = array_filter(array_map(fn($file) => $this->findDockerComposeFile($rootDir, $file), array_keys($config)));
 
         $originalContents = [];
         foreach ($files as $file) {
@@ -386,11 +386,11 @@ class DockerComposeConfigurator extends AbstractConfigurator
 
         return $io->askAndValidate(
             $question,
-            function ($value) {
+            function ($value): string {
                 if (null === $value) {
                     return 'y';
                 }
-                $value = strtolower($value[0]);
+                $value = strtolower((string) $value[0]);
                 if (!\in_array($value, ['y', 'n', 'p', 'x'], true)) {
                     throw new \InvalidArgumentException('Invalid choice.');
                 }

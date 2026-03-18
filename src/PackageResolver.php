@@ -21,12 +21,10 @@ use Composer\Semver\Constraint\MatchAllConstraint;
  */
 class PackageResolver
 {
-    private static $SYMFONY_VERSIONS = ['lts', 'previous', 'stable', 'next', 'dev'];
-    private $downloader;
+    private static array $SYMFONY_VERSIONS = ['lts', 'previous', 'stable', 'next', 'dev'];
 
-    public function __construct(Downloader $downloader)
+    public function __construct(private readonly Downloader $downloader)
     {
-        $this->downloader = $downloader;
     }
 
     public function resolve(array $arguments = [], bool $isRequire = false): array
@@ -34,9 +32,9 @@ class PackageResolver
         // first pass split on : and = to resolve package names
         $packages = [];
         foreach ($arguments as $i => $argument) {
-            if ((false !== $pos = strpos($argument, ':')) || (false !== $pos = strpos($argument, '='))) {
-                $package = $this->resolvePackageName(substr($argument, 0, $pos), $i, $isRequire);
-                $version = substr($argument, $pos + 1);
+            if ((false !== $pos = strpos((string) $argument, ':')) || (false !== $pos = strpos((string) $argument, '='))) {
+                $package = $this->resolvePackageName(substr((string) $argument, 0, $pos), $i, $isRequire);
+                $version = substr((string) $argument, $pos + 1);
                 $packages[] = $package.':'.$version;
             } else {
                 $packages[] = $this->resolvePackageName($argument, $i, $isRequire);
@@ -121,7 +119,7 @@ class PackageResolver
             try {
                 $versionParser = new VersionParser();
                 $versionParser->parseConstraints($argument);
-            } catch (\UnexpectedValueException $e) {
+            } catch (\UnexpectedValueException) {
                 // is it a special Symfony version?
                 if (!\in_array($argument, self::$SYMFONY_VERSIONS, true)) {
                     $this->throwAlternatives($argument, $position);
@@ -135,7 +133,7 @@ class PackageResolver
     /**
      * @throws \UnexpectedValueException
      */
-    private function throwAlternatives(string $argument, int $position)
+    private function throwAlternatives(string $argument, int $position): void
     {
         $alternatives = [];
         foreach ($this->downloader->getAliases() as $alias => $package) {

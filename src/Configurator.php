@@ -21,18 +21,12 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class Configurator
 {
-    private $composer;
-    private $io;
-    private $options;
-    private $configurators;
-    private $postInstallConfigurators;
-    private $cache;
+    private array $configurators;
+    private array $postInstallConfigurators;
+    private ?array $cache = null;
 
-    public function __construct(Composer $composer, IOInterface $io, Options $options)
+    public function __construct(private readonly Composer $composer, private readonly IOInterface $io, private readonly Options $options)
     {
-        $this->composer = $composer;
-        $this->io = $io;
-        $this->options = $options;
         // ordered list of configurators
         $this->configurators = [
             'bundles' => Configurator\BundlesConfigurator::class,
@@ -53,7 +47,7 @@ class Configurator
         ];
     }
 
-    public function install(Recipe $recipe, Lock $lock, array $options = [])
+    public function install(Recipe $recipe, Lock $lock, array $options = []): void
     {
         $manifest = $recipe->getManifest();
         foreach (array_keys($this->configurators) as $key) {
@@ -66,7 +60,7 @@ class Configurator
     /**
      * Run after all recipes have been installed to run post-install configurators.
      */
-    public function postInstall(Recipe $recipe, Lock $lock, array $options = [])
+    public function postInstall(Recipe $recipe, Lock $lock, array $options = []): void
     {
         $manifest = $recipe->getManifest();
         foreach (array_keys($this->postInstallConfigurators) as $key) {
@@ -90,7 +84,7 @@ class Configurator
         }
     }
 
-    public function unconfigure(Recipe $recipe, Lock $lock)
+    public function unconfigure(Recipe $recipe, Lock $lock): void
     {
         $manifest = $recipe->getManifest();
 
@@ -103,7 +97,7 @@ class Configurator
         }
     }
 
-    private function get($key): AbstractConfigurator
+    private function get(int|string $key): AbstractConfigurator
     {
         if (!isset($this->configurators[$key]) && !isset($this->postInstallConfigurators[$key])) {
             throw new \InvalidArgumentException(\sprintf('Unknown configurator "%s".', $key));
@@ -113,7 +107,7 @@ class Configurator
             return $this->cache[$key];
         }
 
-        $class = isset($this->configurators[$key]) ? $this->configurators[$key] : $this->postInstallConfigurators[$key];
+        $class = $this->configurators[$key] ?? $this->postInstallConfigurators[$key];
 
         return $this->cache[$key] = new $class($this->composer, $this->io, $this->options);
     }

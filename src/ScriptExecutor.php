@@ -25,23 +25,17 @@ use Symfony\Component\Process\PhpExecutableFinder;
  */
 class ScriptExecutor
 {
-    private $composer;
-    private $io;
-    private $options;
-    private $executor;
+    private readonly \Composer\Util\ProcessExecutor $executor;
 
-    public function __construct(Composer $composer, IOInterface $io, Options $options, ?ProcessExecutor $executor = null)
+    public function __construct(private readonly Composer $composer, private readonly IOInterface $io, private readonly Options $options, ?ProcessExecutor $executor = null)
     {
-        $this->composer = $composer;
-        $this->io = $io;
-        $this->options = $options;
         $this->executor = $executor ?: new ProcessExecutor();
     }
 
     /**
      * @throws ScriptExecutionException if the executed command returns a non-0 exit code
      */
-    public function execute(string $type, string $cmd, array $arguments = [])
+    public function execute(string $type, string $cmd, array $arguments = []): void
     {
         $parsedCmd = $this->options->expandTargetDir($cmd);
         if (null === $expandedCmd = $this->expandCmd($type, $parsedCmd, $arguments)) {
@@ -49,7 +43,7 @@ class ScriptExecutor
         }
 
         $cmdOutput = new StreamOutput(fopen('php://temp', 'rw'), OutputInterface::VERBOSITY_VERBOSE, $this->io->isDecorated());
-        $outputHandler = function ($type, $buffer) use ($cmdOutput) {
+        $outputHandler = function ($type, string|iterable $buffer) use ($cmdOutput): void {
             $cmdOutput->write($buffer, false, OutputInterface::OUTPUT_RAW);
         };
 
@@ -78,19 +72,15 @@ class ScriptExecutor
 
     private function expandCmd(string $type, string $cmd, array $arguments)
     {
-        switch ($type) {
-            case 'symfony-cmd':
-                return $this->expandSymfonyCmd($cmd, $arguments);
-            case 'php-script':
-                return $this->expandPhpScript($cmd, $arguments);
-            case 'script':
-                return $cmd;
-            default:
-                throw new \InvalidArgumentException(\sprintf('Invalid symfony/flex auto-script in composer.json: "%s" is not a valid type of command.', $type));
-        }
+        return match ($type) {
+            'symfony-cmd' => $this->expandSymfonyCmd($cmd, $arguments),
+            'php-script' => $this->expandPhpScript($cmd, $arguments),
+            'script' => $cmd,
+            default => throw new \InvalidArgumentException(\sprintf('Invalid symfony/flex auto-script in composer.json: "%s" is not a valid type of command.', $type)),
+        };
     }
 
-    private function expandSymfonyCmd(string $cmd, array $arguments)
+    private function expandSymfonyCmd(string $cmd, array $arguments): ?string
     {
         $repo = $this->composer->getRepositoryManager()->getLocalRepository();
         if (!$repo->findPackage('symfony/console', new MatchAllConstraint())) {

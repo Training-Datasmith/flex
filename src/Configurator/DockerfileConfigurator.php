@@ -22,7 +22,7 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class DockerfileConfigurator extends AbstractConfigurator
 {
-    public function configure(Recipe $recipe, $config, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $config, Lock $lock, array $options = []): void
     {
         if (!DockerComposeConfigurator::shouldConfigureDockerRecipe($this->composer, $this->io, $recipe)) {
             return;
@@ -31,7 +31,7 @@ class DockerfileConfigurator extends AbstractConfigurator
         $this->configureDockerfile($recipe, $config, $options['force'] ?? false);
     }
 
-    public function unconfigure(Recipe $recipe, $config, Lock $lock)
+    public function unconfigure(Recipe $recipe, $config, Lock $lock): void
     {
         if (!file_exists($dockerfile = $this->options->get('root-dir').'/Dockerfile')) {
             return;
@@ -44,7 +44,7 @@ class DockerfileConfigurator extends AbstractConfigurator
         }
 
         $this->write('Removing Dockerfile entries');
-        file_put_contents($dockerfile, ltrim($contents, "\n"));
+        file_put_contents($dockerfile, ltrim((string) $contents, "\n"));
     }
 
     public function update(RecipeUpdate $recipeUpdate, array $originalConfig, array $newConfig): void

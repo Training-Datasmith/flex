@@ -19,18 +19,14 @@ use Symfony\Flex\Lock;
 
 class RecipePatcher
 {
-    private $rootDir;
-    private $filesystem;
+    private readonly \Symfony\Component\Filesystem\Filesystem $filesystem;
     private $io;
     private $processExecutor;
-    private $symfonyLock;
 
-    public function __construct(string $rootDir, IOInterface $io, Lock $symfonyLock)
+    public function __construct(private readonly string $rootDir, IOInterface $io, private readonly Lock $symfonyLock)
     {
-        $this->rootDir = $rootDir;
         $this->filesystem = new Filesystem();
         $this->io = $io;
-        $this->symfonyLock = $symfonyLock;
         $this->processExecutor = new ProcessExecutor($io);
     }
 
@@ -42,7 +38,7 @@ class RecipePatcher
     public function applyPatch(RecipePatch $patch, ?string $packageName = null): bool
     {
         $withConflicts = $this->_applyPatchFile($patch);
-        $lockedFiles = $packageName ? array_count_values(array_merge(...array_column(array_filter($this->symfonyLock->all(), fn ($package) => $package !== $packageName, \ARRAY_FILTER_USE_KEY), 'files'))) : [];
+        $lockedFiles = $packageName ? array_count_values(array_merge(...array_column(array_filter($this->symfonyLock->all(), fn ($package): bool => $package !== $packageName, \ARRAY_FILTER_USE_KEY), 'files'))) : [];
 
         $nonRemovableFiles = [];
         foreach ($patch->getDeletedFiles() as $deletedFile) {
@@ -76,13 +72,9 @@ class RecipePatcher
         $ignoredFiles = $this->getIgnoredFiles(array_keys($originalFiles) + array_keys($newFiles));
 
         // null implies "file does not exist"
-        $originalFiles = array_filter($originalFiles, function ($file, $fileName) use ($ignoredFiles) {
-            return null !== $file && !\in_array($fileName, $ignoredFiles);
-        }, \ARRAY_FILTER_USE_BOTH);
+        $originalFiles = array_filter($originalFiles, fn($file, $fileName) => null !== $file && !\in_array($fileName, $ignoredFiles), \ARRAY_FILTER_USE_BOTH);
 
-        $newFiles = array_filter($newFiles, function ($file, $fileName) use ($ignoredFiles) {
-            return null !== $file && !\in_array($fileName, $ignoredFiles);
-        }, \ARRAY_FILTER_USE_BOTH);
+        $newFiles = array_filter($newFiles, fn($file, $fileName) => null !== $file && !\in_array($fileName, $ignoredFiles), \ARRAY_FILTER_USE_BOTH);
 
         $deletedFiles = [];
         // find removed files & record that they are deleted
@@ -141,7 +133,7 @@ class RecipePatcher
         } finally {
             try {
                 $this->filesystem->remove($tmpPath);
-            } catch (IOException $e) {
+            } catch (IOException) {
                 // this can sometimes fail due to git file permissions
                 // if that happens, just leave it: we're in the temp directory anyways
             }
@@ -232,7 +224,7 @@ class RecipePatcher
         return $gitDir.'/objects/'.$hashStart.'/'.$hashEnd;
     }
 
-    private function _applyPatchFile(RecipePatch $patch)
+    private function _applyPatchFile(RecipePatch $patch): bool
     {
         if (!$patch->getPatch()) {
             // nothing to do!
@@ -255,7 +247,7 @@ class RecipePatcher
                 return true;
             }
 
-            if (str_contains($this->processExecutor->getErrorOutput(), 'with conflicts')) {
+            if (str_contains((string) $this->processExecutor->getErrorOutput(), 'with conflicts')) {
                 // successful with conflicts
                 return false;
             }

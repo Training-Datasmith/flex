@@ -37,22 +37,18 @@ class Downloader
 
     private static $versions;
     private static $aliases;
+    private readonly string $sess;
+    private readonly \Composer\Cache $cache;
+    private bool $degradedMode = false;
+    private ?array $endpoints;
+    private ?array $index = null;
+    private ?array $conflicts = null;
+    private ?string $legacyEndpoint;
+    private string|bool|null $caFile = null;
+    private bool $enabled = true;
+    private readonly \Composer\Composer $composer;
 
-    private $io;
-    private $sess;
-    private $cache;
-
-    private HttpDownloader $rfs;
-    private $degradedMode = false;
-    private $endpoints;
-    private $index;
-    private $conflicts;
-    private $legacyEndpoint;
-    private $caFile;
-    private $enabled = true;
-    private $composer;
-
-    public function __construct(Composer $composer, IOInterface $io, HttpDownloader $rfs)
+    public function __construct(Composer $composer, private readonly IOInterface $io, private readonly HttpDownloader $rfs)
     {
         if (getenv('SYMFONY_CAFILE')) {
             $this->caFile = getenv('SYMFONY_CAFILE');
@@ -60,13 +56,13 @@ class Downloader
 
         if (null === $endpoint = $composer->getPackage()->getExtra()['symfony']['endpoint'] ?? null) {
             $this->endpoints = self::DEFAULT_ENDPOINTS;
-        } elseif (\is_array($endpoint) || str_contains($endpoint, '.json') || 'flex://defaults' === $endpoint) {
+        } elseif (\is_array($endpoint) || str_contains((string) $endpoint, '.json') || 'flex://defaults' === $endpoint) {
             $this->endpoints = array_values((array) $endpoint);
             if (\is_string($endpoint) && str_contains($endpoint, '.json')) {
                 $this->endpoints[] = 'flex://defaults';
             }
         } else {
-            $this->legacyEndpoint = rtrim($endpoint, '/');
+            $this->legacyEndpoint = rtrim((string) $endpoint, '/');
         }
 
         if (false === $endpoint = getenv('SYMFONY_ENDPOINT')) {
@@ -87,11 +83,8 @@ class Downloader
 
             $this->endpoints = array_fill_keys($this->endpoints, []);
         }
-
-        $this->io = $io;
         $config = $composer->getConfig();
-        $this->rfs = $rfs;
-        $this->cache = new Cache($io, $config->get('cache-repo-dir').'/flex');
+        $this->cache = new Cache($this->io, $config->get('cache-repo-dir').'/flex');
         $this->sess = bin2hex(random_bytes(16));
         $this->composer = $composer;
     }
@@ -106,7 +99,7 @@ class Downloader
         return $this->enabled;
     }
 
-    public function disable()
+    public function disable(): void
     {
         $this->enabled = false;
     }
@@ -174,7 +167,7 @@ class Downloader
             if ($operation instanceof InformationOperation && $operation->getVersion()) {
                 $version = $operation->getVersion();
             }
-            if (str_starts_with($version, 'dev-') && isset($package->getExtra()['branch-alias'])) {
+            if (str_starts_with((string) $version, 'dev-') && isset($package->getExtra()['branch-alias'])) {
                 $branchAliases = $package->getExtra()['branch-alias'];
                 if (
                     (isset($branchAliases[$version]) && $alias = $branchAliases[$version])
@@ -194,7 +187,7 @@ class Downloader
             }
 
             if ($recipeVersions = $this->index[$package->getName()] ?? null) {
-                $version = explode('.', preg_replace('/^dev-|^v|\.x-dev$|-dev$/', '', $version));
+                $version = explode('.', (string) preg_replace('/^dev-|^v|\.x-dev$|-dev$/', '', (string) $version));
                 $version = $version[0].'.'.($version[1] ?? '9999999');
 
                 foreach (array_reverse($recipeVersions) as $v => $endpoint) {
@@ -208,7 +201,7 @@ class Downloader
 
                     if (null !== $recipeRef && isset($links['archived_recipes_template'])) {
                         if (isset($links['archived_recipes_template_relative'])) {
-                            $links['archived_recipes_template'] = preg_replace('{[^/\?]*+(?=\?|$)}', $links['archived_recipes_template_relative'], $endpoint, 1);
+                            $links['archived_recipes_template'] = preg_replace('{[^/\?]*+(?=\?|$)}', $links['archived_recipes_template_relative'], (string) $endpoint, 1);
                         }
 
                         $urls[] = strtr($links['archived_recipes_template'], [
@@ -220,7 +213,7 @@ class Downloader
                     }
 
                     if (isset($links['recipe_template_relative'])) {
-                        $links['recipe_template'] = preg_replace('{[^/\?]*+(?=\?|$)}', $links['recipe_template_relative'], $endpoint, 1);
+                        $links['recipe_template'] = preg_replace('{[^/\?]*+(?=\?|$)}', $links['recipe_template_relative'], (string) $endpoint, 1);
                     }
 
                     $urls[] = strtr($links['recipe_template'], [
@@ -287,7 +280,7 @@ class Downloader
                     ];
 
                     foreach ($manifest['files'] ?? [] as $i => $file) {
-                        $manifest['files'][$i]['contents'] = \is_array($file['contents']) ? implode("\n", $file['contents']) : base64_decode($file['contents']);
+                        $manifest['files'][$i]['contents'] = \is_array($file['contents']) ? implode("\n", $file['contents']) : base64_decode((string) $file['contents']);
                     }
 
                     $data['manifests'][$name] = $manifest + [
@@ -312,12 +305,12 @@ class Downloader
      *
      * This is used when resolving "conflicts".
      */
-    public function removeRecipeFromIndex(string $packageName, string $version)
+    public function removeRecipeFromIndex(string $packageName, string $version): void
     {
         unset($this->index[$packageName][$version]);
     }
 
-    public function getSymfonyPacks(array $packages)
+    public function getSymfonyPacks(array $packages): array
     {
         $packs = [];
         foreach ($this->composer->getRepositoryManager()->getRepositories() as $repo) {
@@ -354,9 +347,9 @@ class Downloader
             $cacheKey = self::generateCacheKey($url);
             $headers = [];
 
-            if (preg_match('{^https?://api\.github\.com/}', $url)) {
+            if (preg_match('{^https?://api\.github\.com/}', (string) $url)) {
                 $headers[] = 'Accept: application/vnd.github.v3.raw';
-            } elseif (preg_match('{^https?://raw\.githubusercontent\.com/}', $url) && $this->io->hasAuthentication('github.com')) {
+            } elseif (preg_match('{^https?://raw\.githubusercontent\.com/}', (string) $url) && $this->io->hasAuthentication('github.com')) {
                 $auth = $this->io->getAuthentication('github.com');
                 if ('x-oauth-basic' === $auth['password']) {
                     $headers[] = 'Authorization: token '.$auth['username'];
@@ -382,12 +375,12 @@ class Downloader
         $loop = new Loop($this->rfs);
         $jobs = [];
         foreach ($urls as $url) {
-            $jobs[] = $this->rfs->add($url, $options[$url])->then(function (ComposerResponse $response) use ($url, &$responses) {
+            $jobs[] = $this->rfs->add($url, $options[$url])->then(function (ComposerResponse $response) use ($url, &$responses): void {
                 if (200 === $response->getStatusCode()) {
                     $cacheKey = self::generateCacheKey($url);
                     $responses[$url] = $this->parseJson($response->getBody(), $url, $cacheKey, $response->getHeaders())->getBody();
                 }
-            }, function (\Exception $e) use ($url, &$retries) {
+            }, function (\Exception $e) use ($url, &$retries): void {
                 $retries[] = [$url, $e];
             });
         }
@@ -434,7 +427,7 @@ class Downloader
         return $response;
     }
 
-    private function switchToDegradedMode(\Exception $e, string $url)
+    private function switchToDegradedMode(\Exception $e, string $url): void
     {
         if (!$this->degradedMode) {
             $this->io->writeError('<warning>'.$e->getMessage().'</>');
@@ -454,7 +447,7 @@ class Downloader
         return $options;
     }
 
-    private function initialize()
+    private function initialize(): void
     {
         if (null !== $this->index || null === $this->endpoints) {
             $this->index ?? $this->index = [];
@@ -471,7 +464,7 @@ class Downloader
         foreach ($this->endpoints as $endpoint => $config) {
             $config = $indexes[$endpoint] ?? [];
             foreach ($config['recipes'] ?? [] as $package => $versions) {
-                $this->index[$package] = $this->index[$package] ?? array_fill_keys($versions, $endpoint);
+                $this->index[$package] ??= array_fill_keys($versions, $endpoint);
             }
             $this->conflicts[] = $config['recipe-conflicts'] ?? [];
             self::$versions += $config['versions'] ?? [];
@@ -484,11 +477,11 @@ class Downloader
     private static function generateCacheKey(string $url): string
     {
         $url = preg_replace('{^https://api.github.com/repos/([^/]++/[^/]++)/contents/}', '$1/', $url);
-        $url = preg_replace('{^https://raw.githubusercontent.com/([^/]++/[^/]++)/}', '$1/', $url);
+        $url = preg_replace('{^https://raw.githubusercontent.com/([^/]++/[^/]++)/}', '$1/', (string) $url);
 
-        $key = preg_replace('{[^a-z0-9.]}i', '-', $url);
+        $key = preg_replace('{[^a-z0-9.]}i', '-', (string) $url);
 
         // eCryptfs can have problems with filenames longer than around 143 chars
-        return \strlen($key) > 140 ? md5($url) : $key;
+        return \strlen((string) $key) > 140 ? md5((string) $url) : $key;
     }
 }

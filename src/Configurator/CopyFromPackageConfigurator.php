@@ -20,7 +20,7 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class CopyFromPackageConfigurator extends AbstractConfigurator
 {
-    public function configure(Recipe $recipe, $config, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $config, Lock $lock, array $options = []): void
     {
         $this->write('Copying files from package');
         $packageDir = $this->composer->getInstallationManager()->getInstallPath($recipe->getPackage());
@@ -32,7 +32,7 @@ class CopyFromPackageConfigurator extends AbstractConfigurator
         }
     }
 
-    public function unconfigure(Recipe $recipe, $config, Lock $lock)
+    public function unconfigure(Recipe $recipe, $config, Lock $lock): void
     {
         $this->write('Removing files from package');
         $packageDir = $this->composer->getInstallationManager()->getInstallPath($recipe->getPackage());
@@ -71,7 +71,7 @@ class CopyFromPackageConfigurator extends AbstractConfigurator
         $files = [];
         foreach ($manifest as $source => $target) {
             $target = $this->options->expandTargetDir($target);
-            if ('/' === substr($source, -1)) {
+            if (str_ends_with((string) $source, '/')) {
                 $files = array_merge($files, $this->getFilesForDir($this->path->concatenate([$from, $source]), $target));
 
                 continue;
@@ -83,11 +83,11 @@ class CopyFromPackageConfigurator extends AbstractConfigurator
         return $files;
     }
 
-    private function removeFiles(array $manifest, string $from, string $to)
+    private function removeFiles(array $manifest, string $from, string $to): void
     {
         foreach ($manifest as $source => $target) {
             $target = $this->options->expandTargetDir($target);
-            if ('/' === substr($source, -1)) {
+            if (str_ends_with((string) $source, '/')) {
                 $this->removeFilesFromDir($this->path->concatenate([$from, $source]), $this->path->concatenate([$to, $target]));
             } else {
                 $targetPath = $this->path->concatenate([$to, $target]);
@@ -116,7 +116,7 @@ class CopyFromPackageConfigurator extends AbstractConfigurator
      * @param string $source The absolute path to the source file
      * @param string $target The relative (to root dir) path to the target
      */
-    public function copyFile(string $source, string $target, array $options)
+    public function copyFile(string $source, string $target, array $options): void
     {
         $target = $this->options->get('root-dir').'/'.$this->options->expandTargetDir($target);
         if (is_dir($source)) {
@@ -142,7 +142,7 @@ class CopyFromPackageConfigurator extends AbstractConfigurator
         $this->write(\sprintf('  Created <fg=green>"%s"</>', $this->path->relativize($target)));
     }
 
-    private function removeFilesFromDir(string $source, string $target)
+    private function removeFilesFromDir(string $source, string $target): void
     {
         if (!is_dir($source)) {
             return;

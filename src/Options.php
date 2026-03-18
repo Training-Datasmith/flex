@@ -19,15 +19,11 @@ use Composer\Util\ProcessExecutor;
  */
 class Options
 {
-    private $options;
-    private $writtenFiles = [];
-    private $io;
-    private $lockData;
+    private array $writtenFiles = [];
+    private array $lockData;
 
-    public function __construct(array $options = [], ?IOInterface $io = null, ?Lock $lock = null)
+    public function __construct(private array $options = [], private readonly ?IOInterface $io = null, ?Lock $lock = null)
     {
-        $this->options = $options;
-        $this->io = $io;
         $this->lockData = $lock?->all() ?? [];
     }
 
@@ -38,13 +34,13 @@ class Options
 
     public function expandTargetDir(string $target): string
     {
-        $result = preg_replace_callback('{%(.+?)%}', function ($matches) {
-            $option = str_replace('_', '-', strtolower($matches[1]));
+        $result = preg_replace_callback('{%(.+?)%}', function ($matches): string {
+            $option = str_replace('_', '-', strtolower((string) $matches[1]));
             if (!isset($this->options[$option])) {
                 return $matches[0];
             }
 
-            return rtrim($this->options[$option], '/');
+            return rtrim((string) $this->options[$option], '/');
         }, $target);
 
         $phpunitDistFiles = [

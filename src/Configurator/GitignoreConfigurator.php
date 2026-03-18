@@ -20,14 +20,14 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class GitignoreConfigurator extends AbstractConfigurator
 {
-    public function configure(Recipe $recipe, $vars, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $vars, Lock $lock, array $options = []): void
     {
         $this->write('Adding entries to .gitignore');
 
         $this->configureGitignore($recipe, $vars, $options['force'] ?? false);
     }
 
-    public function unconfigure(Recipe $recipe, $vars, Lock $lock)
+    public function unconfigure(Recipe $recipe, $vars, Lock $lock): void
     {
         $file = $this->options->get('root-dir').'/.gitignore';
         if (!file_exists($file)) {
@@ -40,7 +40,7 @@ class GitignoreConfigurator extends AbstractConfigurator
         }
 
         $this->write('Removing entries in .gitignore');
-        file_put_contents($file, ltrim($contents, "\r\n"));
+        file_put_contents($file, ltrim((string) $contents, "\r\n"));
     }
 
     public function update(RecipeUpdate $recipeUpdate, array $originalConfig, array $newConfig): void
@@ -56,7 +56,7 @@ class GitignoreConfigurator extends AbstractConfigurator
         );
     }
 
-    private function configureGitignore(Recipe $recipe, array $vars, bool $update)
+    private function configureGitignore(Recipe $recipe, array $vars, bool $update): void
     {
         $gitignore = $this->options->get('root-dir').'/.gitignore';
         if (!$update && $this->isFileMarked($recipe, $gitignore)) {
@@ -75,7 +75,7 @@ class GitignoreConfigurator extends AbstractConfigurator
         }
     }
 
-    private function getContentsAfterApplyingRecipe(string $rootDir, Recipe $recipe, $vars): ?string
+    private function getContentsAfterApplyingRecipe(string $rootDir, Recipe $recipe, array $vars): ?string
     {
         if (0 === \count($vars)) {
             return null;

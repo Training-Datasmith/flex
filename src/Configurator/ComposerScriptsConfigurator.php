@@ -23,14 +23,14 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class ComposerScriptsConfigurator extends AbstractConfigurator
 {
-    public function configure(Recipe $recipe, $scripts, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $scripts, Lock $lock, array $options = []): void
     {
         $json = new JsonFile(Factory::getComposerFile());
 
         file_put_contents($json->getPath(), $this->configureScripts($scripts, $json));
     }
 
-    public function unconfigure(Recipe $recipe, $scripts, Lock $lock)
+    public function unconfigure(Recipe $recipe, $scripts, Lock $lock): void
     {
         $json = new JsonFile(Factory::getComposerFile());
 

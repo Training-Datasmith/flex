@@ -29,16 +29,13 @@ use Symfony\Flex\Recipe;
  */
 class RecipesCommand extends BaseCommand
 {
-    /** @var \Symfony\Flex\Flex */
-    private $flex;
+    private readonly GithubApi $githubApi;
 
-    private Lock $symfonyLock;
-    private GithubApi $githubApi;
-
-    public function __construct(/* cannot be type-hinted */ $flex, Lock $symfonyLock, HttpDownloader $downloader)
+    /**
+     * @param \Symfony\Flex\Flex $flex
+     */
+    public function __construct(/* cannot be type-hinted */ private $flex, private readonly Lock $symfonyLock, HttpDownloader $downloader)
     {
-        $this->flex = $flex;
-        $this->symfonyLock = $symfonyLock;
         $this->githubApi = new GithubApi($downloader);
 
         parent::__construct();
@@ -63,7 +60,7 @@ class RecipesCommand extends BaseCommand
         // Inspect one or all packages
         $package = $input->getArgument('package');
         if (null !== $package) {
-            $packages = [strtolower($package)];
+            $packages = [strtolower((string) $package)];
         } else {
             $locker = $this->getComposer()->getLocker();
             $lockData = $locker->getLockData();
@@ -154,7 +151,7 @@ class RecipesCommand extends BaseCommand
         return 0;
     }
 
-    private function displayPackageInformation(Recipe $recipe)
+    private function displayPackageInformation(Recipe $recipe): void
     {
         $io = $this->getIO();
         $recipeLock = $this->symfonyLock->get($recipe->getName());
@@ -191,7 +188,7 @@ class RecipesCommand extends BaseCommand
                 );
                 $gitSha = $recipeCommitData ? $recipeCommitData['commit'] : null;
                 $commitDate = $recipeCommitData ? $recipeCommitData['date'] : null;
-            } catch (TransportException $exception) {
+            } catch (TransportException) {
                 $io->writeError('Error downloading exact git sha for installed recipe.');
             }
         }
@@ -258,7 +255,7 @@ class RecipesCommand extends BaseCommand
     {
         $tree = [];
         foreach ($files as $file) {
-            $path = explode('/', $file);
+            $path = explode('/', (string) $file);
 
             $tree = array_merge_recursive($tree, $this->addNode($path));
         }
@@ -281,10 +278,9 @@ class RecipesCommand extends BaseCommand
     /**
      * Note : We do not display file modification information with Configurator like ComposerScripts, Container, DockerComposer, Dockerfile, Env, Gitignore and Makefile.
      */
-    private function displayFilesTree(array $tree)
+    private function displayFilesTree(array $tree): void
     {
-        end($tree);
-        $endKey = key($tree);
+        $endKey = array_key_last($tree);
         foreach ($tree as $dir => $files) {
             $treeBar = '├';
             $total = \count($files);
@@ -305,7 +301,7 @@ class RecipesCommand extends BaseCommand
         }
     }
 
-    private function displayTree(array $tree, $previousTreeBar = '├', $level = 1)
+    private function displayTree(array $tree, string|array $previousTreeBar = '├', int|float $level = 1): void
     {
         $previousTreeBar = str_replace('├', '│', $previousTreeBar);
         $treeBar = $previousTreeBar.'  ├';
@@ -332,7 +328,7 @@ class RecipesCommand extends BaseCommand
         }
     }
 
-    private function writeTreeLine($line)
+    private function writeTreeLine(string $line): void
     {
         $io = $this->getIO();
         if (!$io->isDecorated()) {

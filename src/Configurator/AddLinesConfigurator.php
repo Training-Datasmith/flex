@@ -30,7 +30,7 @@ class AddLinesConfigurator extends AbstractConfigurator
      *
      * @var string[]
      */
-    private $fileContents = [];
+    private array $fileContents = [];
 
     public function configure(Recipe $recipe, $config, Lock $lock, array $options = []): void
     {
@@ -57,9 +57,7 @@ class AddLinesConfigurator extends AbstractConfigurator
     public function update(RecipeUpdate $recipeUpdate, array $originalConfig, array $newConfig): void
     {
         // manually check for "requires", as unconfigure ignores it
-        $originalConfig = array_filter($originalConfig, function ($item) {
-            return !isset($item['requires']) || $this->isPackageInstalled($item['requires']);
-        });
+        $originalConfig = array_filter($originalConfig, fn(array $item) => !isset($item['requires']) || $this->isPackageInstalled($item['requires']));
 
         // reset the file content cache
         $this->fileContents = [];
@@ -128,7 +126,7 @@ class AddLinesConfigurator extends AbstractConfigurator
 
                 continue;
             }
-            $target = isset($patch['target']) ? $patch['target'] : null;
+            $target = $patch['target'] ?? null;
 
             $newContents = $this->getPatchedContents($file, $content, $position, $target, $warnIfMissing);
             $this->fileContents[$file] = $newContents;
@@ -185,7 +183,7 @@ class AddLinesConfigurator extends AbstractConfigurator
                 $lines = explode("\n", $fileContents);
                 $targetFound = false;
                 foreach ($lines as $key => $line) {
-                    if (str_contains($line, $target)) {
+                    if (str_contains($line, (string) $target)) {
                         array_splice($lines, $key + 1, 0, $value);
                         $targetFound = true;
 
@@ -214,7 +212,7 @@ class AddLinesConfigurator extends AbstractConfigurator
     {
         $fileContents = $this->readFile($file);
 
-        if (!str_contains($fileContents, $value)) {
+        if (!str_contains($fileContents, (string) $value)) {
             return $fileContents; // value already gone!
         }
 
@@ -224,9 +222,9 @@ class AddLinesConfigurator extends AbstractConfigurator
             $value .= "\n";
         }
 
-        $position = strpos($fileContents, $value);
+        $position = strpos($fileContents, (string) $value);
 
-        return substr_replace($fileContents, '', $position, \strlen($value));
+        return substr_replace($fileContents, '', $position, \strlen((string) $value));
     }
 
     private function isPackageInstalled($packages): bool
@@ -238,7 +236,7 @@ class AddLinesConfigurator extends AbstractConfigurator
         $installedRepo = $this->composer->getRepositoryManager()->getLocalRepository();
 
         foreach ($packages as $package) {
-            $package = explode(':', $package, 2);
+            $package = explode(':', (string) $package, 2);
             $packageName = $package[0];
             $constraint = $package[1] ?? '*';
 
@@ -253,8 +251,8 @@ class AddLinesConfigurator extends AbstractConfigurator
     private function relativize(string $path): string
     {
         $rootDir = $this->options->get('root-dir');
-        if (str_starts_with($path, $rootDir)) {
-            $path = substr($path, \strlen($rootDir) + 1);
+        if (str_starts_with($path, (string) $rootDir)) {
+            $path = substr($path, \strlen((string) $rootDir) + 1);
         }
 
         return ltrim($path, '/\\');

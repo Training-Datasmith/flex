@@ -16,23 +16,14 @@ use Symfony\Flex\Recipe;
 
 class RecipeUpdate
 {
-    private $originalRecipe;
-    private $newRecipe;
-    private $lock;
-    private $rootDir;
-
     /** @var string[] */
-    private $originalRecipeFiles = [];
+    private array $originalRecipeFiles = [];
     /** @var string[] */
-    private $newRecipeFiles = [];
-    private $copyFromPackagePaths = [];
+    private array $newRecipeFiles = [];
+    private array $copyFromPackagePaths = [];
 
-    public function __construct(Recipe $originalRecipe, Recipe $newRecipe, Lock $lock, string $rootDir)
+    public function __construct(private readonly Recipe $originalRecipe, private readonly Recipe $newRecipe, private readonly Lock $lock, private readonly string $rootDir)
     {
-        $this->originalRecipe = $originalRecipe;
-        $this->newRecipe = $newRecipe;
-        $this->lock = $lock;
-        $this->rootDir = $rootDir;
     }
 
     public function getOriginalRecipe(): Recipe
@@ -70,7 +61,7 @@ class RecipeUpdate
         $this->newRecipeFiles[$filename] = $contents;
     }
 
-    public function addOriginalFiles(array $files)
+    public function addOriginalFiles(array $files): void
     {
         foreach ($files as $file => $contents) {
             if (null === $contents) {
@@ -81,7 +72,7 @@ class RecipeUpdate
         }
     }
 
-    public function addNewFiles(array $files)
+    public function addNewFiles(array $files): void
     {
         foreach ($files as $file => $contents) {
             if (null === $contents) {
@@ -107,7 +98,7 @@ class RecipeUpdate
         return $this->copyFromPackagePaths;
     }
 
-    public function addCopyFromPackagePath(string $source, string $target)
+    public function addCopyFromPackagePath(string $source, string $target): void
     {
         $this->copyFromPackagePaths[$source] = $target;
     }

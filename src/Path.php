@@ -16,11 +16,8 @@ namespace Symfony\Flex;
  */
 class Path
 {
-    private $workingDirectory;
-
-    public function __construct($workingDirectory)
+    public function __construct(private $workingDirectory)
     {
-        $this->workingDirectory = $workingDirectory;
     }
 
     public function relativize(string $absolutePath): string
@@ -34,8 +31,6 @@ class Path
     {
         $first = array_shift($parts);
 
-        return array_reduce($parts, function (string $initial, string $next): string {
-            return rtrim($initial, '/').'/'.ltrim($next, '/');
-        }, $first);
+        return array_reduce($parts, fn(string $initial, string $next): string => rtrim($initial, '/').'/'.ltrim($next, '/'), $first);
     }
 }

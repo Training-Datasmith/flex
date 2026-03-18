@@ -8,11 +8,11 @@ use Composer\Package\PackageInterface;
 /**
  * @author Maxime Hélias <maximehelias16@gmail.com>
  */
-class InformationOperation implements OperationInterface
+class InformationOperation implements OperationInterface, \Stringable
 {
     private $package;
-    private $recipeRef;
-    private $version;
+    private ?string $recipeRef = null;
+    private ?string $version = null;
 
     public function __construct(PackageInterface $package)
     {
@@ -24,7 +24,7 @@ class InformationOperation implements OperationInterface
      *
      * Both $recipeRef and $version would normally come from the symfony.lock file.
      */
-    public function setSpecificRecipeVersion(string $recipeRef, string $version)
+    public function setSpecificRecipeVersion(string $recipeRef, string $version): void
     {
         $this->recipeRef = $recipeRef;
         $this->version = $version;
@@ -50,30 +50,24 @@ class InformationOperation implements OperationInterface
         return $this->version;
     }
 
-    public function getJobType()
+    public function getJobType(): string
     {
         return 'information';
     }
 
-    /**
-     * @return string
-     */
-    public function getOperationType()
+    public function getOperationType(): string
     {
         return 'information';
     }
 
-    /**
-     * @return string
-     */
-    public function show($lock)
+    public function show($lock): string
     {
         $pretty = method_exists($this->package, 'getFullPrettyVersion') ? $this->package->getFullPrettyVersion() : $this->formatVersion($this->package);
 
         return 'Information '.$this->package->getPrettyName().' ('.$pretty.')';
     }
 
-    public function __toString()
+    public function __toString(): string
     {
         return $this->show(false);
     }

@@ -13,17 +13,13 @@ namespace Symfony\Flex\Unpack;
 
 class Operation
 {
-    private $packages = [];
-    private $unpack;
-    private $sort;
+    private array $packages = [];
 
-    public function __construct(bool $unpack, bool $sort)
+    public function __construct(private readonly bool $unpack, private readonly bool $sort)
     {
-        $this->unpack = $unpack;
-        $this->sort = $sort;
     }
 
-    public function addPackage(string $name, string $version, bool $dev)
+    public function addPackage(string $name, string $version, bool $dev): void
     {
         $this->packages[] = [
             'name' => $name,

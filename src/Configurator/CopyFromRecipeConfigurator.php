@@ -20,7 +20,7 @@ use Symfony\Flex\Update\RecipeUpdate;
  */
 class CopyFromRecipeConfigurator extends AbstractConfigurator
 {
-    public function configure(Recipe $recipe, $config, Lock $lock, array $options = [])
+    public function configure(Recipe $recipe, $config, Lock $lock, array $options = []): void
     {
         $this->write('Copying files from recipe');
         $options = array_merge($this->options->toArray(), $options);
@@ -28,7 +28,7 @@ class CopyFromRecipeConfigurator extends AbstractConfigurator
         $lock->add($recipe->getName(), ['files' => $this->copyFiles($config, $recipe->getFiles(), $options)]);
     }
 
-    public function unconfigure(Recipe $recipe, $config, Lock $lock)
+    public function unconfigure(Recipe $recipe, $config, Lock $lock): void
     {
         $this->write('Removing files from recipe');
         $rootDir = $this->options->get('root-dir');
@@ -79,7 +79,7 @@ class CopyFromRecipeConfigurator extends AbstractConfigurator
 
         foreach ($manifest as $source => $target) {
             $target = $this->options->expandTargetDir($target);
-            if ('/' === substr($source, -1)) {
+            if (str_ends_with((string) $source, '/')) {
                 $copiedFiles = array_merge(
                     $copiedFiles,
                     $this->copyDir($source, $this->path->concatenate([$to, $target]), $files, $options)
@@ -96,8 +96,8 @@ class CopyFromRecipeConfigurator extends AbstractConfigurator
     {
         $copiedFiles = [];
         foreach ($files as $file => $data) {
-            if (str_starts_with($file, $source)) {
-                $file = $this->path->concatenate([$target, substr($file, \strlen($source))]);
+            if (str_starts_with((string) $file, $source)) {
+                $file = $this->path->concatenate([$target, substr((string) $file, \strlen($source))]);
                 $copiedFiles[] = $this->copyFile($file, $data['contents'], $data['executable'], $options);
             }
         }
@@ -128,7 +128,7 @@ class CopyFromRecipeConfigurator extends AbstractConfigurator
         return $copiedFile;
     }
 
-    private function removeFile(string $to)
+    private function removeFile(string $to): void
     {
         if (!file_exists($to)) {
             return;
@@ -142,7 +142,7 @@ class CopyFromRecipeConfigurator extends AbstractConfigurator
         }
     }
 
-    private function getLocalFilePath(string $basePath, $destination): string
+    private function getLocalFilePath(string $basePath, string $destination): string
     {
         return str_replace($basePath.\DIRECTORY_SEPARATOR, '', $destination);
     }

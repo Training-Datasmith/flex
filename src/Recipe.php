@@ -19,18 +19,10 @@ use Composer\Package\PackageInterface;
 class Recipe
 {
     private $package;
-    private $name;
-    private $job;
-    private $data;
-    private $lock;
 
-    public function __construct(PackageInterface $package, string $name, string $job, array $data, array $lock = [])
+    public function __construct(PackageInterface $package, private readonly string $name, private readonly string $job, private array $data, private array $lock = [])
     {
         $this->package = $package;
-        $this->name = $name;
-        $this->job = $job;
-        $this->data = $data;
-        $this->lock = $lock;
     }
 
     public function getPackage(): PackageInterface
@@ -88,7 +80,7 @@ class Recipe
         }
 
         // symfony/translation:3.3@github.com/symfony/recipes:branch
-        if (!preg_match('/^([^:]++):([^@]++)@([^:]++):(.+)$/', $this->data['origin'], $matches)) {
+        if (!preg_match('/^([^:]++):([^@]++)@([^:]++):(.+)$/', (string) $this->data['origin'], $matches)) {
             // that excludes auto-generated recipes, which is what we want
             return '';
         }

@@ -16,12 +16,11 @@ use Composer\Util\RemoteFilesystem;
 
 class GithubApi
 {
-    /** @var HttpDownloader|RemoteFilesystem */
-    private $downloader;
-
-    public function __construct($downloader)
+    /**
+     * @param HttpDownloader|RemoteFilesystem $downloader
+     */
+    public function __construct(private $downloader)
     {
-        $this->downloader = $downloader;
     }
 
     /**
@@ -67,7 +66,7 @@ class GithubApi
 
                     return [
                         // shorten for brevity
-                        'commit' => substr($commitData['sha'], 0, 7),
+                        'commit' => substr((string) $commitData['sha'], 0, 7),
                         'date' => $commitData['commit']['committer']['date'],
                         'new_commits' => $commitShas,
                     ];
@@ -142,7 +141,7 @@ class GithubApi
         $bestItem = null;
         foreach ($data['items'] as $item) {
             // make sure the PR referenced isn't from a different repository
-            if (!str_contains($item['html_url'], \sprintf('%s/pull', $repositoryName))) {
+            if (!str_contains((string) $item['html_url'], \sprintf('%s/pull', $repositoryName))) {
                 continue;
             }
 
@@ -171,7 +170,7 @@ class GithubApi
         ];
     }
 
-    private function requestGitHubApi(string $path)
+    private function requestGitHubApi(string $path): mixed
     {
         $contents = $this->downloader->get($path)->getBody();
 

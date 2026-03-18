@@ -24,17 +24,11 @@ use Seld\JsonLint\ParsingException;
  */
 class PackageJsonSynchronizer
 {
-    private $rootDir;
-    private $vendorDir;
-    private $scriptExecutor;
     private $io;
-    private $versionParser;
+    private readonly \Composer\Semver\VersionParser $versionParser;
 
-    public function __construct(string $rootDir, string $vendorDir, ScriptExecutor $scriptExecutor, IOInterface $io)
+    public function __construct(private readonly string $rootDir, private readonly string $vendorDir, private readonly ScriptExecutor $scriptExecutor, IOInterface $io)
     {
-        $this->rootDir = $rootDir;
-        $this->vendorDir = $vendorDir;
-        $this->scriptExecutor = $scriptExecutor;
         $this->io = $io;
         $this->versionParser = new VersionParser();
     }
@@ -54,7 +48,7 @@ class PackageJsonSynchronizer
 
         try {
             JsonFile::parseJson(file_get_contents($this->rootDir.'/package.json'));
-        } catch (ParsingException $e) {
+        } catch (ParsingException) {
             // if package.json is invalid (possible during a recipe upgrade), we can't update the file
             return false;
         }
@@ -104,10 +98,16 @@ class PackageJsonSynchronizer
 
         foreach (['dependencies' => $jsDependencies, 'devDependencies' => $jsDevDependencies] as $key => $packages) {
             foreach ($packages as $name => $version) {
-                if ('@' !== $name[0] || !str_starts_with($version, 'file:'.$this->vendorDir.'/') || !str_contains($version, '/assets')) {
+                if ('@' !== $name[0]) {
                     continue;
                 }
-                if (file_exists($this->rootDir.'/'.substr($version, 5).'/package.json')) {
+                if (!str_starts_with((string) $version, 'file:'.$this->vendorDir.'/')) {
+                    continue;
+                }
+                if (!str_contains((string) $version, '/assets')) {
+                    continue;
+                }
+                if (file_exists($this->rootDir.'/'.substr((string) $version, 5).'/package.json')) {
                     continue;
                 }
 
@@ -121,7 +121,7 @@ class PackageJsonSynchronizer
         return $didChangePackageJson;
     }
 
-    private function resolvePackageJsonDependencies($phpPackage): array
+    private function resolvePackageJsonDependencies(array $phpPackage): array
     {
         $dependencies = [];
 
@@ -167,13 +167,13 @@ class PackageJsonSynchronizer
             // When "$constraintConfig" matches one of the following cases:
             // - "entrypoint:%PACKAGE%/script.js"
             // - {"version": "entrypoint:%PACKAGE%/script.js"}
-            if (str_starts_with($constraint, 'entrypoint:')) {
+            if (str_starts_with((string) $constraint, 'entrypoint:')) {
                 $entrypoint = true;
                 $constraint = substr_replace($constraint, 'path:', 0, \strlen('entrypoint:'));
             }
 
-            if (str_starts_with($constraint, 'path:')) {
-                $path = substr($constraint, 5);
+            if (str_starts_with((string) $constraint, 'path:')) {
+                $path = substr((string) $constraint, 5);
                 $path = str_replace('%PACKAGE%', \dirname($packageJson->getPath()), $path);
 
                 $dependencies[$importMapName] = [
@@ -227,7 +227,7 @@ class PackageJsonSynchronizer
 
             if (isset($content['devDependencies'])) {
                 $devDependencies = $content['devDependencies'];
-                uksort($devDependencies, 'strnatcmp');
+                uksort($devDependencies, strnatcmp(...));
                 $manipulator->addMainKey('devDependencies', $devDependencies);
             }
 
@@ -242,14 +242,14 @@ class PackageJsonSynchronizer
         return $didChangePackageJson;
     }
 
-    private function shouldUpdateConstraint(string $existingConstraint, string $constraint)
+    private function shouldUpdateConstraint(string $existingConstraint, string $constraint): bool
     {
         try {
             $existingConstraint = $this->versionParser->parseConstraints($existingConstraint);
             $constraint = $this->versionParser->parseConstraints($constraint);
 
             return !$existingConstraint->matches($constraint);
-        } catch (\UnexpectedValueException $e) {
+        } catch (\UnexpectedValueException) {
             return true;
         }
     }
@@ -317,7 +317,7 @@ class PackageJsonSynchronizer
         }
     }
 
-    private function updateControllersJsonFile(array $phpPackages)
+    private function updateControllersJsonFile(array $phpPackages): void
     {
         if (!file_exists($controllersJsonPath = $this->rootDir.'/assets/controllers.json')) {
             return;
@@ -325,7 +325,7 @@ class PackageJsonSynchronizer
 
         try {
             $previousControllersJson = (new JsonFile($controllersJsonPath))->read();
-        } catch (ParsingException $e) {
+        } catch (ParsingException) {
             // if controllers.json is invalid (possible during a recipe upgrade), we can't update the file
             return;
         }
