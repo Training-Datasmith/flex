@@ -120,7 +120,8 @@ class ScriptExecutor
         }
 
         if ($memoryLimit = (string) getenv('COMPOSER_MEMORY_LIMIT')) {
-            $arguments[] = "-d memory_limit={$memoryLimit}";
+            $arguments[] = '-d';
+            $arguments[] = 'memory_limit='.$memoryLimit;
         }
 
         $phpArgs = implode(' ', array_map([ProcessExecutor::class, 'escape'], $arguments));
