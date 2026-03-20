@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,154 +9,128 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex;
 
-use Composer\IO\IOInterface;
-use Composer\Package\AliasPackage;
-use Composer\Package\PackageInterface;
-use Composer\Package\RootPackageInterface;
+use Composer\IO\Io_Interface;
+use Composer\Package\Alias_Package;
+use Composer\Package\Package_Interface;
+use Composer\Package\Root_Package_Interface;
 use Composer\Semver\Constraint\Constraint;
 use Composer\Semver\Intervals;
-use Composer\Semver\VersionParser;
-
+use Composer\Semver\Version_Parser;
 /**
  * @author Nicolas Grekas <p@tchwork.com>
  */
-class PackageFilter
+class Package_Filter
 {
     private $versions;
-    private readonly \Composer\Semver\VersionParser $versionParser;
-    private $symfonyConstraints;
+    private readonly \Composer\Semver\Version_Parser $version_parser;
+    private $symfony_constraints;
     private $io;
-
-    public function __construct(IOInterface $io, private readonly string $symfonyRequire, private Downloader $downloader, private readonly bool $ignorePreleases = false)
+    public function __construct(Io_Interface $io, private readonly string $symfony_require, private Downloader $downloader, private readonly bool $ignore_preleases = false)
     {
-        $this->versionParser = new VersionParser();
-        $this->symfonyConstraints = '' !== $this->symfonyRequire ? $this->versionParser->parseConstraints($this->symfonyRequire) : null;
+        $this->version_parser = new Version_Parser();
+        $this->symfony_constraints = '' !== $this->symfony_require ? $this->version_parser->parse_constraints($this->symfony_require) : null;
         $this->io = $io;
     }
-
     /**
      * @param PackageInterface[] $data
      * @param PackageInterface[] $lockedPackages
      *
      * @return PackageInterface[]
      */
-    public function removeLegacyPackages(array $data, RootPackageInterface $rootPackage, array $lockedPackages): array
+    public function remove_legacy_packages(array $data, Root_Package_Interface $root_package, array $locked_packages): array
     {
-        if ($this->ignorePreleases) {
-            $filteredPackages = [];
+        if ($this->ignore_preleases) {
+            $filtered_packages = [];
             foreach ($data as $package) {
-                if (\in_array($package->getStability(), ['stable', 'dev'], true)) {
-                    $filteredPackages[] = $package;
+                if (\in_array($package->get_stability(), ['stable', 'dev'], true)) {
+                    $filtered_packages[] = $package;
                 }
             }
-            $data = $filteredPackages;
+            $data = $filtered_packages;
         }
-
-        if (!$this->symfonyConstraints || !$data) {
+        if (!$this->symfony_constraints || !$data) {
             return $data;
         }
-
-        $lockedVersions = [];
-        foreach ($lockedPackages as $package) {
-            $lockedVersions[$package->getName()] = [$package->getVersion()];
-            if ($package instanceof AliasPackage) {
-                $lockedVersions[$package->getName()][] = $package->getAliasOf()->getVersion();
+        $locked_versions = [];
+        foreach ($locked_packages as $package) {
+            $locked_versions[$package->get_name()] = [$package->get_version()];
+            if ($package instanceof Alias_Package) {
+                $locked_versions[$package->get_name()][] = $package->get_alias_of()->get_version();
             }
         }
-
-        $rootConstraints = [];
-        foreach ($rootPackage->getRequires() + $rootPackage->getDevRequires() as $name => $link) {
-            $rootConstraints[$name] = $link->getConstraint();
+        $root_constraints = [];
+        foreach ($root_package->get_requires() + $root_package->get_dev_requires() as $name => $link) {
+            $root_constraints[$name] = $link->get_constraint();
         }
-
-        $knownVersions = null;
-        $filteredPackages = [];
-        $symfonyPackages = [];
-        $oneSymfony = false;
+        $known_versions = null;
+        $filtered_packages = [];
+        $symfony_packages = [];
+        $one_symfony = false;
         foreach ($data as $package) {
-            $name = $package->getName();
-            $versions = [$package->getVersion()];
-            if ($package instanceof AliasPackage) {
-                $versions[] = $package->getAliasOf()->getVersion();
+            $name = $package->get_name();
+            $versions = [$package->get_version()];
+            if ($package instanceof Alias_Package) {
+                $versions[] = $package->get_alias_of()->get_version();
             }
-
-            if ('symfony/symfony' !== $name && (
-                array_intersect($versions, $lockedVersions[$name] ?? [])
-                || (($knownVersions ??= $this->getVersions()) && !isset($knownVersions['splits'][$name]))
-                || (isset($rootConstraints[$name]) && !Intervals::haveIntersections($this->symfonyConstraints, $rootConstraints[$name]))
-                || ('symfony/psr-http-message-bridge' === $name && 6.4 > $versions[0])
-            )) {
-                $filteredPackages[] = $package;
+            if ('symfony/symfony' !== $name && (array_intersect($versions, $locked_versions[$name] ?? []) || ($known_versions ??= $this->get_versions()) && !isset($known_versions['splits'][$name]) || isset($root_constraints[$name]) && !Intervals::have_intersections($this->symfony_constraints, $root_constraints[$name]) || 'symfony/psr-http-message-bridge' === $name && 6.4 > $versions[0])) {
+                $filtered_packages[] = $package;
                 continue;
             }
-
-            if (null !== $alias = $package->getExtra()['branch-alias'][$package->getVersion()] ?? null) {
-                $versions[] = $this->versionParser->normalize($alias);
+            if (null !== $alias = $package->get_extra()['branch-alias'][$package->get_version()] ?? null) {
+                $versions[] = $this->version_parser->normalize($alias);
             }
-
             foreach ($versions as $version) {
-                if ($this->symfonyConstraints->matches(new Constraint('==', $version))) {
-                    $filteredPackages[] = $package;
-                    $oneSymfony = $oneSymfony || 'symfony/symfony' === $name;
+                if ($this->symfony_constraints->matches(new Constraint('==', $version))) {
+                    $filtered_packages[] = $package;
+                    $one_symfony = $one_symfony || 'symfony/symfony' === $name;
                     continue 2;
                 }
             }
-
             if ('symfony/symfony' === $name) {
-                $symfonyPackages[] = $package;
+                $symfony_packages[] = $package;
             } elseif (null !== $this->io) {
-                $this->io->writeError(\sprintf('<info>Restricting packages listed in "symfony/symfony" to "%s"</>', $this->symfonyRequire));
+                $this->io->write_error(\sprintf('<info>Restricting packages listed in "symfony/symfony" to "%s"</>', $this->symfony_require));
                 $this->io = null;
             }
         }
-
-        if ($symfonyPackages && !$oneSymfony) {
-            return array_merge($filteredPackages, $symfonyPackages);
+        if ($symfony_packages && !$one_symfony) {
+            return array_merge($filtered_packages, $symfony_packages);
         }
-
-        return $filteredPackages;
+        return $filtered_packages;
     }
-
-    private function getVersions(): array
+    private function get_versions(): array
     {
         if (null !== $this->versions) {
             return $this->versions;
         }
-
-        $versions = $this->downloader->getVersions();
+        $versions = $this->downloader->get_versions();
         $this->downloader = null;
-        $okVersions = [];
-
+        $ok_versions = [];
         if (!isset($versions['splits'])) {
             throw new \LogicException('The Flex index is missing a "splits" entry. Did you forget to add "flex://defaults" in the "extra.symfony.endpoint" array of your composer.json?');
         }
         foreach ($versions['splits'] as $name => $vers) {
             foreach ($vers as $i => $v) {
-                if (!isset($okVersions[$v])) {
-                    $okVersions[$v] = false;
+                if (!isset($ok_versions[$v])) {
+                    $ok_versions[$v] = false;
                     $w = str_ends_with((string) $v, '.x') ? $versions['next'] : $v;
-
                     for ($j = 0; $j < 60; ++$j) {
-                        if ($this->symfonyConstraints->matches(new Constraint('==', $w.'.'.$j.'.0'))) {
-                            $okVersions[$v] = true;
+                        if ($this->symfony_constraints->matches(new Constraint('==', $w . '.' . $j . '.0'))) {
+                            $ok_versions[$v] = true;
                             break;
                         }
                     }
                 }
-
-                if (!$okVersions[$v]) {
+                if (!$ok_versions[$v]) {
                     unset($vers[$i]);
                 }
             }
-
             if (!$vers || $vers === $versions['splits'][$name]) {
                 unset($versions['splits'][$name]);
             }
         }
-
         return $this->versions = $versions;
     }
 }

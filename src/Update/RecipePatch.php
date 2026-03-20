@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,36 +9,31 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex\Update;
 
-class RecipePatch
+class Recipe_Patch
 {
-    public function __construct(private readonly string $patch, private readonly array $blobs, private readonly array $deletedFiles, private readonly array $removedPatches = [])
+    public function __construct(private readonly string $patch, private readonly array $blobs, private readonly array $deleted_files, private readonly array $removed_patches = [])
     {
     }
-
-    public function getPatch(): string
+    public function get_patch(): string
     {
         return $this->patch;
     }
-
-    public function getBlobs(): array
+    public function get_blobs(): array
     {
         return $this->blobs;
     }
-
-    public function getDeletedFiles(): array
+    public function get_deleted_files(): array
     {
-        return $this->deletedFiles;
+        return $this->deleted_files;
     }
-
     /**
      * Patches for modified files that were removed because the file
      * has been deleted in the user's project.
      */
-    public function getRemovedPatches(): array
+    public function get_removed_patches(): array
     {
-        return $this->removedPatches;
+        return $this->removed_patches;
     }
 }

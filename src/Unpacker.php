@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,202 +9,160 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex;
 
 use Composer\Composer;
-use Composer\Config\JsonConfigSource;
+use Composer\Config\Json_Config_Source;
 use Composer\Factory;
-use Composer\IO\IOInterface;
-use Composer\Json\JsonFile;
-use Composer\Json\JsonManipulator;
+use Composer\IO\Io_Interface;
+use Composer\Json\Json_File;
+use Composer\Json\Json_Manipulator;
 use Composer\Package\Locker;
-use Composer\Package\Version\VersionSelector;
-use Composer\Repository\CompositeRepository;
-use Composer\Repository\RepositorySet;
-use Composer\Semver\VersionParser;
+use Composer\Package\Version\Version_Selector;
+use Composer\Repository\Composite_Repository;
+use Composer\Repository\Repository_Set;
+use Composer\Semver\Version_Parser;
 use Symfony\Flex\Unpack\Operation;
 use Symfony\Flex\Unpack\Result;
-
 class Unpacker
 {
-    private readonly \Composer\Semver\VersionParser $versionParser;
-
-    public function __construct(private readonly Composer $composer, private readonly PackageResolver $resolver)
+    private readonly \Composer\Semver\Version_Parser $version_parser;
+    public function __construct(private readonly Composer $composer, private readonly Package_Resolver $resolver)
     {
-        $this->versionParser = new VersionParser();
+        $this->version_parser = new Version_Parser();
     }
-
-    public function unpack(Operation $op, ?Result $result = null, array &$links = [], bool $devRequire = false): Result
+    public function unpack(Operation $op, ?Result $result = null, array &$links = [], bool $dev_require = false): Result
     {
         if (null === $result) {
             $result = new Result();
         }
-
-        $localRepo = $this->composer->getRepositoryManager()->getLocalRepository();
-        foreach ($op->getPackages() as $package) {
-            $pkg = $localRepo->findPackage($package['name'], '*');
-            $pkg ??= $this->composer->getRepositoryManager()->findPackage($package['name'], $package['version'] ?: '*');
-
+        $local_repo = $this->composer->get_repository_manager()->get_local_repository();
+        foreach ($op->get_packages() as $package) {
+            $pkg = $local_repo->find_package($package['name'], '*');
+            $pkg ??= $this->composer->get_repository_manager()->find_package($package['name'], $package['version'] ?: '*');
             // not unpackable or no --unpack flag or empty packs (markers)
-            if (
-                null === $pkg
-                || 'symfony-pack' !== $pkg->getType()
-                || !$op->shouldUnpack()
-                || 0 === \count($pkg->getRequires()) + \count($pkg->getDevRequires())
-            ) {
-                $result->addRequired($package['name'].($package['version'] ? ':'.$package['version'] : ''));
-
+            if (null === $pkg || 'symfony-pack' !== $pkg->get_type() || !$op->should_unpack() || 0 === \count($pkg->get_requires()) + \count($pkg->get_dev_requires())) {
+                $result->add_required($package['name'] . ($package['version'] ? ':' . $package['version'] : ''));
                 continue;
             }
-
-            if (!$result->addUnpacked($pkg)) {
+            if (!$result->add_unpacked($pkg)) {
                 continue;
             }
-
             $requires = [];
-            foreach ($pkg->getRequires() as $link) {
-                $requires[$link->getTarget()] = $link;
+            foreach ($pkg->get_requires() as $link) {
+                $requires[$link->get_target()] = $link;
             }
-            $devRequires = $pkg->getDevRequires();
-
-            foreach ($devRequires as $i => $link) {
-                if (!isset($requires[$link->getTarget()])) {
-                    throw new \RuntimeException(\sprintf('Symfony pack "%s" must duplicate all entries from "require-dev" into "require" but entry "%s" was not found.', $package['name'], $link->getTarget()));
+            $dev_requires = $pkg->get_dev_requires();
+            foreach ($dev_requires as $i => $link) {
+                if (!isset($requires[$link->get_target()])) {
+                    throw new \RuntimeException(\sprintf('Symfony pack "%s" must duplicate all entries from "require-dev" into "require" but entry "%s" was not found.', $package['name'], $link->get_target()));
                 }
-                $devRequires[$i] = $requires[$link->getTarget()];
-                unset($requires[$link->getTarget()]);
+                $dev_requires[$i] = $requires[$link->get_target()];
+                unset($requires[$link->get_target()]);
             }
-
-            $versionSelector = null;
-            foreach ([$requires, $devRequires] as $dev => $requires) {
-                $dev = $dev ?: $devRequire ?: $package['dev'];
-
+            $version_selector = null;
+            foreach ([$requires, $dev_requires] as $dev => $requires) {
+                $dev = ($dev ?: $dev_require) ?: $package['dev'];
                 foreach ($requires as $link) {
-                    if ('php' === $linkName = $link->getTarget()) {
+                    if ('php' === $link_name = $link->get_target()) {
                         continue;
                     }
-
-                    $constraint = $link->getPrettyConstraint();
-                    $constraint = substr($this->resolver->parseVersion($linkName, $constraint, true), 1) ?: $constraint;
-
-                    if ($subPkg = $localRepo->findPackage($linkName, '*')) {
-                        if ('symfony-pack' === $subPkg->getType()) {
-                            $subOp = new Operation(true, $op->shouldSort());
-                            $subOp->addPackage($subPkg->getName(), $constraint, $dev);
-                            $result = $this->unpack($subOp, $result, $links, $dev);
+                    $constraint = $link->get_pretty_constraint();
+                    $constraint = substr($this->resolver->parse_version($link_name, $constraint, true), 1) ?: $constraint;
+                    if ($sub_pkg = $local_repo->find_package($link_name, '*')) {
+                        if ('symfony-pack' === $sub_pkg->get_type()) {
+                            $sub_op = new Operation(true, $op->should_sort());
+                            $sub_op->add_package($sub_pkg->get_name(), $constraint, $dev);
+                            $result = $this->unpack($sub_op, $result, $links, $dev);
                             continue;
                         }
-
                         if ('*' === $constraint) {
-                            if (null === $versionSelector) {
-                                $pool = new RepositorySet($this->composer->getPackage()->getMinimumStability(), $this->composer->getPackage()->getStabilityFlags());
-                                $pool->addRepository(new CompositeRepository($this->composer->getRepositoryManager()->getRepositories()));
-                                $versionSelector = new VersionSelector($pool);
+                            if (null === $version_selector) {
+                                $pool = new Repository_Set($this->composer->get_package()->get_minimum_stability(), $this->composer->get_package()->get_stability_flags());
+                                $pool->add_repository(new Composite_Repository($this->composer->get_repository_manager()->get_repositories()));
+                                $version_selector = new Version_Selector($pool);
                             }
-
-                            $constraint = $versionSelector->findRecommendedRequireVersion($subPkg);
+                            $constraint = $version_selector->find_recommended_require_version($sub_pkg);
                         }
                     }
-
-                    $linkType = $dev ? 'require-dev' : 'require';
-                    $constraint = $this->versionParser->parseConstraints($constraint);
-
-                    if (isset($links[$linkName])) {
-                        $links[$linkName]['constraints'][] = $constraint;
-                        if ('require' === $linkType) {
-                            $links[$linkName]['type'] = 'require';
+                    $link_type = $dev ? 'require-dev' : 'require';
+                    $constraint = $this->version_parser->parse_constraints($constraint);
+                    if (isset($links[$link_name])) {
+                        $links[$link_name]['constraints'][] = $constraint;
+                        if ('require' === $link_type) {
+                            $links[$link_name]['type'] = 'require';
                         }
                     } else {
-                        $links[$linkName] = [
-                            'type' => $linkType,
-                            'name' => $linkName,
-                            'constraints' => [$constraint],
-                        ];
+                        $links[$link_name] = ['type' => $link_type, 'name' => $link_name, 'constraints' => [$constraint]];
                     }
                 }
             }
         }
-
         if (1 < \func_num_args()) {
             return $result;
         }
-
-        $jsonPath = Factory::getComposerFile();
-        $jsonContent = file_get_contents($jsonPath);
-        $jsonStored = json_decode($jsonContent, true);
-        $jsonManipulator = new JsonManipulator($jsonContent);
-
-        foreach ($result->getUnpacked() as $pkg) {
-            $localRepo->removePackage($pkg);
-            $localRepo->setDevPackageNames(array_diff($localRepo->getDevPackageNames(), [$pkg->getName()]));
-            $jsonManipulator->removeSubNode('require', $pkg->getName());
-            $jsonManipulator->removeSubNode('require-dev', $pkg->getName());
+        $json_path = Factory::get_composer_file();
+        $json_content = file_get_contents($json_path);
+        $json_stored = json_decode($json_content, true);
+        $json_manipulator = new Json_Manipulator($json_content);
+        foreach ($result->get_unpacked() as $pkg) {
+            $local_repo->remove_package($pkg);
+            $local_repo->set_dev_package_names(array_diff($local_repo->get_dev_package_names(), [$pkg->get_name()]));
+            $json_manipulator->remove_sub_node('require', $pkg->get_name());
+            $json_manipulator->remove_sub_node('require-dev', $pkg->get_name());
         }
-
         foreach ($links as $link) {
             // nothing to do, package is already present in the "require" section
-            if (isset($jsonStored['require'][$link['name']])) {
+            if (isset($json_stored['require'][$link['name']])) {
                 continue;
             }
-
-            if (isset($jsonStored['require-dev'][$link['name']])) {
+            if (isset($json_stored['require-dev'][$link['name']])) {
                 // nothing to do, package is already present in the "require-dev" section
                 if ('require-dev' === $link['type']) {
                     continue;
                 }
-
                 // removes package from "require-dev", because it will be moved to "require"
                 // save stored constraint
-                $link['constraints'][] = $this->versionParser->parseConstraints($jsonStored['require-dev'][$link['name']]);
-                $jsonManipulator->removeSubNode('require-dev', $link['name']);
+                $link['constraints'][] = $this->version_parser->parse_constraints($json_stored['require-dev'][$link['name']]);
+                $json_manipulator->remove_sub_node('require-dev', $link['name']);
             }
-
             $constraint = end($link['constraints']);
-
-            if (!$jsonManipulator->addLink($link['type'], $link['name'], $constraint->getPrettyString(), $op->shouldSort())) {
+            if (!$json_manipulator->add_link($link['type'], $link['name'], $constraint->get_pretty_string(), $op->should_sort())) {
                 throw new \RuntimeException(\sprintf('Unable to unpack package "%s".', $link['name']));
             }
         }
-
-        file_put_contents($jsonPath, $jsonManipulator->getContents());
-
+        file_put_contents($json_path, $json_manipulator->get_contents());
         return $result;
     }
-
-    public function updateLock(Result $result, IOInterface $io): void
+    public function update_lock(Result $result, Io_Interface $io): void
     {
-        $json = new JsonFile(Factory::getComposerFile());
-        $manipulator = new JsonConfigSource($json);
-        $locker = $this->composer->getLocker();
-        $lockData = $locker->getLockData();
-
-        foreach ($result->getUnpacked() as $package) {
-            $manipulator->removeLink('require-dev', $package->getName());
-            foreach ($lockData['packages-dev'] as $i => $pkg) {
-                if ($package->getName() === $pkg['name']) {
-                    unset($lockData['packages-dev'][$i]);
+        $json = new Json_File(Factory::get_composer_file());
+        $manipulator = new Json_Config_Source($json);
+        $locker = $this->composer->get_locker();
+        $lock_data = $locker->get_lock_data();
+        foreach ($result->get_unpacked() as $package) {
+            $manipulator->remove_link('require-dev', $package->get_name());
+            foreach ($lock_data['packages-dev'] as $i => $pkg) {
+                if ($package->get_name() === $pkg['name']) {
+                    unset($lock_data['packages-dev'][$i]);
                 }
             }
-            $manipulator->removeLink('require', $package->getName());
-            foreach ($lockData['packages'] as $i => $pkg) {
-                if ($package->getName() === $pkg['name']) {
-                    unset($lockData['packages'][$i]);
+            $manipulator->remove_link('require', $package->get_name());
+            foreach ($lock_data['packages'] as $i => $pkg) {
+                if ($package->get_name() === $pkg['name']) {
+                    unset($lock_data['packages'][$i]);
                 }
             }
         }
-        $jsonContent = file_get_contents($json->getPath());
-        $lockData['packages'] = array_values($lockData['packages']);
-        $lockData['packages-dev'] = array_values($lockData['packages-dev']);
-        $lockData['content-hash'] = Locker::getContentHash($jsonContent);
-        $lockFile = new JsonFile(substr($json->getPath(), 0, -4).'lock', null, $io);
-
-        $lockFile->write($lockData);
-
-        $locker = new Locker($io, $lockFile, $this->composer->getInstallationManager(), $jsonContent);
-        $this->composer->setLocker($locker);
-
-        $localRepo = $this->composer->getRepositoryManager()->getLocalRepository();
-        $localRepo->write($localRepo->getDevMode() ?? true, $this->composer->getInstallationManager());
+        $json_content = file_get_contents($json->get_path());
+        $lock_data['packages'] = array_values($lock_data['packages']);
+        $lock_data['packages-dev'] = array_values($lock_data['packages-dev']);
+        $lock_data['content-hash'] = Locker::get_content_hash($json_content);
+        $lock_file = new Json_File(substr($json->get_path(), 0, -4) . 'lock', null, $io);
+        $lock_file->write($lock_data);
+        $locker = new Locker($io, $lock_file, $this->composer->get_installation_manager(), $json_content);
+        $this->composer->set_locker($locker);
+        $local_repo = $this->composer->get_repository_manager()->get_local_repository();
+        $local_repo->write($local_repo->get_dev_mode() ?? true, $this->composer->get_installation_manager());
     }
 }

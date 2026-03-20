@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,162 +9,131 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex;
 
-use Composer\IO\IOInterface;
-use Composer\Json\JsonFile;
-use Composer\Json\JsonManipulator;
+use Composer\IO\Io_Interface;
+use Composer\Json\Json_File;
+use Composer\Json\Json_Manipulator;
 use Composer\Semver\Semver;
-use Composer\Semver\VersionParser;
-use Seld\JsonLint\ParsingException;
-
+use Composer\Semver\Version_Parser;
+use Seld\Json_Lint\Parsing_Exception;
 /**
  * Synchronize package.json files detected in installed PHP packages with
  * the current application.
  */
-class PackageJsonSynchronizer
+class Package_Json_Synchronizer
 {
     private $io;
-    private readonly \Composer\Semver\VersionParser $versionParser;
-
-    public function __construct(private readonly string $rootDir, private readonly string $vendorDir, private readonly ScriptExecutor $scriptExecutor, IOInterface $io)
+    private readonly \Composer\Semver\Version_Parser $version_parser;
+    public function __construct(private readonly string $root_dir, private readonly string $vendor_dir, private readonly Script_Executor $script_executor, Io_Interface $io)
     {
         $this->io = $io;
-        $this->versionParser = new VersionParser();
+        $this->version_parser = new Version_Parser();
     }
-
-    public function shouldSynchronize(): bool
+    public function should_synchronize(): bool
     {
-        return $this->rootDir && (file_exists($this->rootDir.'/package.json') || file_exists($this->rootDir.'/importmap.php'));
+        return $this->root_dir && (file_exists($this->root_dir . '/package.json') || file_exists($this->root_dir . '/importmap.php'));
     }
-
-    public function synchronize(array $phpPackages): bool
+    public function synchronize(array $php_packages): bool
     {
-        if (file_exists($this->rootDir.'/importmap.php')) {
-            $this->synchronizeForAssetMapper($phpPackages);
-
+        if (file_exists($this->root_dir . '/importmap.php')) {
+            $this->synchronize_for_asset_mapper($php_packages);
             return false;
         }
-
         try {
-            JsonFile::parseJson(file_get_contents($this->rootDir.'/package.json'));
-        } catch (ParsingException) {
+            Json_File::parse_json(file_get_contents($this->root_dir . '/package.json'));
+        } catch (Parsing_Exception) {
             // if package.json is invalid (possible during a recipe upgrade), we can't update the file
             return false;
         }
-
-        $didChangePackageJson = $this->removeObsoletePackageJsonLinks();
-
+        $did_change_package_json = $this->remove_obsolete_package_json_links();
         $dependencies = [];
-
-        $phpPackages = $this->normalizePhpPackages($phpPackages);
-        foreach ($phpPackages as $phpPackage) {
-            foreach ($this->resolvePackageJsonDependencies($phpPackage) as $dependency => $constraint) {
-                $dependencies[$dependency][$phpPackage['name']] = $constraint;
+        $php_packages = $this->normalize_php_packages($php_packages);
+        foreach ($php_packages as $php_package) {
+            foreach ($this->resolve_package_json_dependencies($php_package) as $dependency => $constraint) {
+                $dependencies[$dependency][$php_package['name']] = $constraint;
             }
         }
-
-        $didChangePackageJson = $this->registerDependenciesInPackageJson($dependencies) || $didChangePackageJson;
-
+        $did_change_package_json = $this->register_dependencies_in_package_json($dependencies) || $did_change_package_json;
         // Register controllers and entrypoints in controllers.json
-        $this->updateControllersJsonFile($phpPackages);
-
-        return $didChangePackageJson;
+        $this->update_controllers_json_file($php_packages);
+        return $did_change_package_json;
     }
-
-    private function synchronizeForAssetMapper(array $phpPackages): void
+    private function synchronize_for_asset_mapper(array $php_packages): void
     {
-        $importMapEntries = [];
-        $phpPackages = $this->normalizePhpPackages($phpPackages);
-        foreach ($phpPackages as $phpPackage) {
-            foreach ($this->resolveImportMapPackages($phpPackage) as $name => $dependencyConfig) {
-                $importMapEntries[$name] = $dependencyConfig;
+        $import_map_entries = [];
+        $php_packages = $this->normalize_php_packages($php_packages);
+        foreach ($php_packages as $php_package) {
+            foreach ($this->resolve_import_map_packages($php_package) as $name => $dependency_config) {
+                $import_map_entries[$name] = $dependency_config;
             }
         }
-
-        $this->updateImportMap($importMapEntries);
-        $this->updateControllersJsonFile($phpPackages);
+        $this->update_import_map($import_map_entries);
+        $this->update_controllers_json_file($php_packages);
     }
-
-    private function removeObsoletePackageJsonLinks(): bool
+    private function remove_obsolete_package_json_links(): bool
     {
-        $didChangePackageJson = false;
-
-        $manipulator = new JsonManipulator(file_get_contents($this->rootDir.'/package.json'));
-        $content = json_decode($manipulator->getContents(), true);
-
-        $jsDependencies = $content['dependencies'] ?? [];
-        $jsDevDependencies = $content['devDependencies'] ?? [];
-
-        foreach (['dependencies' => $jsDependencies, 'devDependencies' => $jsDevDependencies] as $key => $packages) {
+        $did_change_package_json = false;
+        $manipulator = new Json_Manipulator(file_get_contents($this->root_dir . '/package.json'));
+        $content = json_decode($manipulator->get_contents(), true);
+        $js_dependencies = $content['dependencies'] ?? [];
+        $js_dev_dependencies = $content['devDependencies'] ?? [];
+        foreach (['dependencies' => $js_dependencies, 'devDependencies' => $js_dev_dependencies] as $key => $packages) {
             foreach ($packages as $name => $version) {
                 if ('@' !== $name[0]) {
                     continue;
                 }
-                if (!str_starts_with((string) $version, 'file:'.$this->vendorDir.'/')) {
+                if (!str_starts_with((string) $version, 'file:' . $this->vendor_dir . '/')) {
                     continue;
                 }
                 if (!str_contains((string) $version, '/assets')) {
                     continue;
                 }
-                if (file_exists($this->rootDir.'/'.substr((string) $version, 5).'/package.json')) {
+                if (file_exists($this->root_dir . '/' . substr((string) $version, 5) . '/package.json')) {
                     continue;
                 }
-
-                $manipulator->removeSubNode($key, $name);
-                $didChangePackageJson = true;
+                $manipulator->remove_sub_node($key, $name);
+                $did_change_package_json = true;
             }
         }
-
-        file_put_contents($this->rootDir.'/package.json', $manipulator->getContents());
-
-        return $didChangePackageJson;
+        file_put_contents($this->root_dir . '/package.json', $manipulator->get_contents());
+        return $did_change_package_json;
     }
-
-    private function resolvePackageJsonDependencies(array $phpPackage): array
+    private function resolve_package_json_dependencies(array $php_package): array
     {
         $dependencies = [];
-
-        if (!$packageJson = $this->resolvePackageJson($phpPackage)) {
+        if (!$package_json = $this->resolve_package_json($php_package)) {
             return $dependencies;
         }
-
-        if ($packageJson->read()['symfony']['needsPackageAsADependency'] ?? true) {
-            $dependencies['@'.$phpPackage['name']] = 'file:'.substr($packageJson->getPath(), 1 + \strlen($this->rootDir), -13);
+        if ($package_json->read()['symfony']['needsPackageAsADependency'] ?? true) {
+            $dependencies['@' . $php_package['name']] = 'file:' . substr($package_json->get_path(), 1 + \strlen($this->root_dir), -13);
         }
-
-        foreach ($packageJson->read()['peerDependencies'] ?? [] as $peerDependency => $constraint) {
-            $dependencies[$peerDependency] = $constraint;
+        foreach ($package_json->read()['peerDependencies'] ?? [] as $peer_dependency => $constraint) {
+            $dependencies[$peer_dependency] = $constraint;
         }
-
         return $dependencies;
     }
-
-    private function resolveImportMapPackages($phpPackage): array
+    private function resolve_import_map_packages($php_package): array
     {
-        if (!$packageJson = $this->resolvePackageJson($phpPackage)) {
+        if (!$package_json = $this->resolve_package_json($php_package)) {
             return [];
         }
-
         $dependencies = [];
-
-        foreach ($packageJson->read()['symfony']['importmap'] ?? [] as $importMapName => $constraintConfig) {
-            if (\is_string($constraintConfig)) {
+        foreach ($package_json->read()['symfony']['importmap'] ?? [] as $import_map_name => $constraint_config) {
+            if (\is_string($constraint_config)) {
                 // Matches string constraint, like "^3.0" or "path:%PACKAGE%/script.js"
-                $constraint = $constraintConfig;
-                $package = $importMapName;
+                $constraint = $constraint_config;
+                $package = $import_map_name;
                 $entrypoint = false;
-            } elseif (\is_array($constraintConfig)) {
+            } elseif (\is_array($constraint_config)) {
                 // Matches array constraint, like {"version":"^3.0"} or {"version":"path:%PACKAGE%/script.js","entrypoint":true}
                 // Note that non-path assets can't be entrypoint
-                $constraint = $constraintConfig['version'] ?? '';
-                $package = $constraintConfig['package'] ?? $importMapName;
-                $entrypoint = $constraintConfig['entrypoint'] ?? false;
+                $constraint = $constraint_config['version'] ?? '';
+                $package = $constraint_config['package'] ?? $import_map_name;
+                $entrypoint = $constraint_config['entrypoint'] ?? false;
             } else {
-                throw new \InvalidArgumentException(\sprintf('Invalid constraint config for key "%s": "%s" given, array or string expected.', $importMapName, var_export($constraintConfig, true)));
+                throw new \InvalidArgumentException(\sprintf('Invalid constraint config for key "%s": "%s" given, array or string expected.', $import_map_name, var_export($constraint_config, true)));
             }
-
             // When "$constraintConfig" matches one of the following cases:
             // - "entrypoint:%PACKAGE%/script.js"
             // - {"version": "entrypoint:%PACKAGE%/script.js"}
@@ -173,253 +141,182 @@ class PackageJsonSynchronizer
                 $entrypoint = true;
                 $constraint = substr_replace($constraint, 'path:', 0, \strlen('entrypoint:'));
             }
-
             if (str_starts_with((string) $constraint, 'path:')) {
                 $path = substr((string) $constraint, 5);
-                $path = str_replace('%PACKAGE%', \dirname($packageJson->getPath()), $path);
-
-                $dependencies[$importMapName] = [
-                    'path' => $path,
-                    'entrypoint' => $entrypoint,
-                ];
-
+                $path = str_replace('%PACKAGE%', \dirname($package_json->get_path()), $path);
+                $dependencies[$import_map_name] = ['path' => $path, 'entrypoint' => $entrypoint];
                 continue;
             }
-
-            $dependencies[$importMapName] = [
-                'version' => $constraint,
-                'package' => $package,
-            ];
+            $dependencies[$import_map_name] = ['version' => $constraint, 'package' => $package];
         }
-
         return $dependencies;
     }
-
-    private function registerDependenciesInPackageJson(array $flexDependencies): bool
+    private function register_dependencies_in_package_json(array $flex_dependencies): bool
     {
-        $didChangePackageJson = false;
-
-        $manipulator = new JsonManipulator(file_get_contents($this->rootDir.'/package.json'));
-        $content = json_decode($manipulator->getContents(), true);
-
-        foreach ($flexDependencies as $dependency => $constraints) {
+        $did_change_package_json = false;
+        $manipulator = new Json_Manipulator(file_get_contents($this->root_dir . '/package.json'));
+        $content = json_decode($manipulator->get_contents(), true);
+        foreach ($flex_dependencies as $dependency => $constraints) {
             if (1 !== \count($constraints) && 1 !== \count(array_count_values($constraints))) {
                 // If the flex packages have a colliding peer dependency, leave the resolution to the user
                 continue;
             }
-
             $constraint = array_shift($constraints);
-
-            $parentNode = isset($content['dependencies'][$dependency]) ? 'dependencies' : 'devDependencies';
-            if (!isset($content[$parentNode][$dependency])) {
+            $parent_node = isset($content['dependencies'][$dependency]) ? 'dependencies' : 'devDependencies';
+            if (!isset($content[$parent_node][$dependency])) {
                 $content['devDependencies'][$dependency] = $constraint;
-                $didChangePackageJson = true;
-            } elseif ($constraint !== $content[$parentNode][$dependency]) {
-                if ($this->shouldUpdateConstraint($content[$parentNode][$dependency], $constraint)) {
-                    $content[$parentNode][$dependency] = $constraint;
-                    $didChangePackageJson = true;
+                $did_change_package_json = true;
+            } elseif ($constraint !== $content[$parent_node][$dependency]) {
+                if ($this->should_update_constraint($content[$parent_node][$dependency], $constraint)) {
+                    $content[$parent_node][$dependency] = $constraint;
+                    $did_change_package_json = true;
                 }
             }
         }
-
-        if ($didChangePackageJson) {
+        if ($did_change_package_json) {
             if (isset($content['dependencies'])) {
-                $manipulator->addMainKey('dependencies', $content['dependencies']);
+                $manipulator->add_main_key('dependencies', $content['dependencies']);
             }
-
             if (isset($content['devDependencies'])) {
-                $devDependencies = $content['devDependencies'];
-                uksort($devDependencies, strnatcmp(...));
-                $manipulator->addMainKey('devDependencies', $devDependencies);
+                $dev_dependencies = $content['devDependencies'];
+                uksort($dev_dependencies, strnatcmp(...));
+                $manipulator->add_main_key('devDependencies', $dev_dependencies);
             }
-
-            $newContents = $manipulator->getContents();
-            if ($newContents === file_get_contents($this->rootDir.'/package.json')) {
+            $new_contents = $manipulator->get_contents();
+            if ($new_contents === file_get_contents($this->root_dir . '/package.json')) {
                 return false;
             }
-
-            file_put_contents($this->rootDir.'/package.json', $manipulator->getContents());
+            file_put_contents($this->root_dir . '/package.json', $manipulator->get_contents());
         }
-
-        return $didChangePackageJson;
+        return $did_change_package_json;
     }
-
-    private function shouldUpdateConstraint(string $existingConstraint, string $constraint): bool
+    private function should_update_constraint(string $existing_constraint, string $constraint): bool
     {
         try {
-            $existingConstraint = $this->versionParser->parseConstraints($existingConstraint);
-            $constraint = $this->versionParser->parseConstraints($constraint);
-
-            return !$existingConstraint->matches($constraint);
+            $existing_constraint = $this->version_parser->parse_constraints($existing_constraint);
+            $constraint = $this->version_parser->parse_constraints($constraint);
+            return !$existing_constraint->matches($constraint);
         } catch (\UnexpectedValueException) {
             return true;
         }
     }
-
     /**
      * @param array<string, array{path?: string, package?: string, version?: string, entrypoint?: bool}> $importMapEntries
      */
-    private function updateImportMap(array $importMapEntries): void
+    private function update_import_map(array $import_map_entries): void
     {
-        if (!$importMapEntries) {
+        if (!$import_map_entries) {
             return;
         }
-
-        $importMapData = include $this->rootDir.'/importmap.php';
-
-        foreach ($importMapEntries as $name => $importMapEntry) {
-            if (isset($importMapData[$name])) {
-                if (!isset($importMapData[$name]['version'])) {
+        $import_map_data = include $this->root_dir . '/importmap.php';
+        foreach ($import_map_entries as $name => $import_map_entry) {
+            if (isset($import_map_data[$name])) {
+                if (!isset($import_map_data[$name]['version'])) {
                     // AssetMapper 6.3
                     continue;
                 }
-
-                $version = $importMapData[$name]['version'];
-                $versionConstraint = $importMapEntry['version'] ?? null;
-
+                $version = $import_map_data[$name]['version'];
+                $version_constraint = $import_map_entry['version'] ?? null;
                 // if the version constraint is satisfied, skip - else, update the package
-                if (Semver::satisfies($version, $versionConstraint)) {
+                if (Semver::satisfies($version, $version_constraint)) {
                     continue;
                 }
-
-                $this->io->writeError(\sprintf('Updating package <comment>%s</> from <info>%s</> to <info>%s</>.', $name, $version, $versionConstraint));
+                $this->io->write_error(\sprintf('Updating package <comment>%s</> from <info>%s</> to <info>%s</>.', $name, $version, $version_constraint));
             }
-
-            if (isset($importMapEntry['path'])) {
-                $arguments = [$name, '--path='.$importMapEntry['path']];
-                if (isset($importMapEntry['entrypoint']) && true === $importMapEntry['entrypoint']) {
+            if (isset($import_map_entry['path'])) {
+                $arguments = [$name, '--path=' . $import_map_entry['path']];
+                if (isset($import_map_entry['entrypoint']) && true === $import_map_entry['entrypoint']) {
                     $arguments[] = '--entrypoint';
                 }
-
-                $this->scriptExecutor->execute(
-                    'symfony-cmd',
-                    'importmap:require',
-                    $arguments
-                );
-
+                $this->script_executor->execute('symfony-cmd', 'importmap:require', $arguments);
                 continue;
             }
-
-            if (isset($importMapEntry['version'])) {
-                $packageName = $importMapEntry['package'].'@'.$importMapEntry['version'];
-                if ($importMapEntry['package'] !== $name) {
-                    $packageName .= '='.$name;
+            if (isset($import_map_entry['version'])) {
+                $package_name = $import_map_entry['package'] . '@' . $import_map_entry['version'];
+                if ($import_map_entry['package'] !== $name) {
+                    $package_name .= '=' . $name;
                 }
-                $arguments = [$packageName];
-                $this->scriptExecutor->execute(
-                    'symfony-cmd',
-                    'importmap:require',
-                    $arguments
-                );
-
+                $arguments = [$package_name];
+                $this->script_executor->execute('symfony-cmd', 'importmap:require', $arguments);
                 continue;
             }
-
-            throw new \InvalidArgumentException(\sprintf('Invalid importmap entry: "%s".', var_export($importMapEntry, true)));
+            throw new \InvalidArgumentException(\sprintf('Invalid importmap entry: "%s".', var_export($import_map_entry, true)));
         }
     }
-
-    private function updateControllersJsonFile(array $phpPackages): void
+    private function update_controllers_json_file(array $php_packages): void
     {
-        if (!file_exists($controllersJsonPath = $this->rootDir.'/assets/controllers.json')) {
+        if (!file_exists($controllers_json_path = $this->root_dir . '/assets/controllers.json')) {
             return;
         }
-
         try {
-            $previousControllersJson = (new JsonFile($controllersJsonPath))->read();
-        } catch (ParsingException) {
+            $previous_controllers_json = (new Json_File($controllers_json_path))->read();
+        } catch (Parsing_Exception) {
             // if controllers.json is invalid (possible during a recipe upgrade), we can't update the file
             return;
         }
-        $newControllersJson = [
-            'controllers' => [],
-            'entrypoints' => $previousControllersJson['entrypoints'],
-        ];
-
-        foreach ($phpPackages as $phpPackage) {
-            if (!$packageJson = $this->resolvePackageJson($phpPackage)) {
+        $new_controllers_json = ['controllers' => [], 'entrypoints' => $previous_controllers_json['entrypoints']];
+        foreach ($php_packages as $php_package) {
+            if (!$package_json = $this->resolve_package_json($php_package)) {
                 continue;
             }
-            $name = '@'.$phpPackage['name'];
-
-            foreach ($packageJson->read()['symfony']['controllers'] ?? [] as $controllerName => $defaultConfig) {
+            $name = '@' . $php_package['name'];
+            foreach ($package_json->read()['symfony']['controllers'] ?? [] as $controller_name => $default_config) {
                 // If the package has just been added (no config), add the default config provided by the package
-                if (!isset($previousControllersJson['controllers'][$name][$controllerName])) {
+                if (!isset($previous_controllers_json['controllers'][$name][$controller_name])) {
                     $config = [];
-                    $config['enabled'] = $defaultConfig['enabled'];
-                    $config['fetch'] = $defaultConfig['fetch'] ?? 'eager';
-
-                    if (isset($defaultConfig['autoimport'])) {
-                        $config['autoimport'] = $defaultConfig['autoimport'];
+                    $config['enabled'] = $default_config['enabled'];
+                    $config['fetch'] = $default_config['fetch'] ?? 'eager';
+                    if (isset($default_config['autoimport'])) {
+                        $config['autoimport'] = $default_config['autoimport'];
                     }
-
-                    $newControllersJson['controllers'][$name][$controllerName] = $config;
-
+                    $new_controllers_json['controllers'][$name][$controller_name] = $config;
                     continue;
                 }
-
                 // Otherwise, the package exists: merge new config with user config
-                $previousConfig = $previousControllersJson['controllers'][$name][$controllerName];
-
+                $previous_config = $previous_controllers_json['controllers'][$name][$controller_name];
                 $config = [];
-                $config['enabled'] = $previousConfig['enabled'];
-                $config['fetch'] = $previousConfig['fetch'] ?? 'eager';
-
-                if (isset($defaultConfig['autoimport'])) {
+                $config['enabled'] = $previous_config['enabled'];
+                $config['fetch'] = $previous_config['fetch'] ?? 'eager';
+                if (isset($default_config['autoimport'])) {
                     $config['autoimport'] = [];
-
                     // Use for each autoimport either the previous config if one existed or the default config otherwise
-                    foreach ($defaultConfig['autoimport'] as $autoimport => $enabled) {
-                        $config['autoimport'][$autoimport] = $previousConfig['autoimport'][$autoimport] ?? $enabled;
+                    foreach ($default_config['autoimport'] as $autoimport => $enabled) {
+                        $config['autoimport'][$autoimport] = $previous_config['autoimport'][$autoimport] ?? $enabled;
                     }
                 }
-
-                $newControllersJson['controllers'][$name][$controllerName] = $config;
+                $new_controllers_json['controllers'][$name][$controller_name] = $config;
             }
-
-            foreach ($packageJson->read()['symfony']['entrypoints'] ?? [] as $entrypoint => $filename) {
-                if (!isset($newControllersJson['entrypoints'][$entrypoint])) {
-                    $newControllersJson['entrypoints'][$entrypoint] = $filename;
+            foreach ($package_json->read()['symfony']['entrypoints'] ?? [] as $entrypoint => $filename) {
+                if (!isset($new_controllers_json['entrypoints'][$entrypoint])) {
+                    $new_controllers_json['entrypoints'][$entrypoint] = $filename;
                 }
             }
         }
-
-        file_put_contents($controllersJsonPath, json_encode($newControllersJson, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES)."\n");
+        file_put_contents($controllers_json_path, json_encode($new_controllers_json, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES) . "\n");
     }
-
-    private function resolvePackageJson(array $phpPackage): ?JsonFile
+    private function resolve_package_json(array $php_package): ?Json_File
     {
-        $packageDir = $this->rootDir.'/'.$this->vendorDir.'/'.$phpPackage['name'];
-
-        if (!\in_array('symfony-ux', $phpPackage['keywords'] ?? [], true)) {
+        $package_dir = $this->root_dir . '/' . $this->vendor_dir . '/' . $php_package['name'];
+        if (!\in_array('symfony-ux', $php_package['keywords'] ?? [], true)) {
             return null;
         }
-
         foreach (['/assets', '/Resources/assets', '/src/Resources/assets'] as $subdir) {
-            $packageJsonPath = $packageDir.$subdir.'/package.json';
-
-            if (!file_exists($packageJsonPath)) {
+            $package_json_path = $package_dir . $subdir . '/package.json';
+            if (!file_exists($package_json_path)) {
                 continue;
             }
-
-            return new JsonFile($packageJsonPath);
+            return new Json_File($package_json_path);
         }
-
         return null;
     }
-
-    private function normalizePhpPackages(array $phpPackages): array
+    private function normalize_php_packages(array $php_packages): array
     {
-        foreach ($phpPackages as $k => $phpPackage) {
-            if (\is_string($phpPackage)) {
+        foreach ($php_packages as $k => $php_package) {
+            if (\is_string($php_package)) {
                 // support for smooth upgrades from older flex versions
-                $phpPackages[$k] = $phpPackage = [
-                    'name' => $phpPackage,
-                    'keywords' => ['symfony-ux'],
-                ];
+                $php_packages[$k] = $php_package = ['name' => $php_package, 'keywords' => ['symfony-ux']];
             }
         }
-
-        return $phpPackages;
+        return $php_packages;
     }
 }

@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,285 +9,228 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex\Configurator;
 
 use Composer\Composer;
-use Composer\IO\IOInterface;
+use Composer\IO\Io_Interface;
 use Symfony\Flex\Lock;
 use Symfony\Flex\Options;
 use Symfony\Flex\Recipe;
-use Symfony\Flex\Update\RecipeUpdate;
-
+use Symfony\Flex\Update\Recipe_Update;
 /**
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class EnvConfigurator extends AbstractConfigurator
+class Env_Configurator extends Abstract_Configurator
 {
-    public function __construct(Composer $composer, IOInterface $io, Options $options, private readonly string $suffix = '')
+    public function __construct(Composer $composer, Io_Interface $io, Options $options, private readonly string $suffix = '')
     {
         parent::__construct($composer, $io, $options);
     }
-
     public function configure(Recipe $recipe, $vars, Lock $lock, array $options = []): void
     {
-        $this->write('Adding environment variable defaults'.('' === $this->suffix ? '' : ' ('.$this->suffix.')'));
-
-        $this->configureEnvDist($recipe, $vars, $options['force'] ?? false);
-
+        $this->write('Adding environment variable defaults' . ('' === $this->suffix ? '' : ' (' . $this->suffix . ')'));
+        $this->configure_env_dist($recipe, $vars, $options['force'] ?? false);
         if ('' !== $this->suffix) {
             return;
         }
-
-        if (!file_exists($this->options->get('root-dir').'/'.($this->options->get('runtime')['dotenv_path'] ?? '.env').'.test')) {
-            $this->configurePhpUnit($recipe, $vars, $options['force'] ?? false);
+        if (!file_exists($this->options->get('root-dir') . '/' . ($this->options->get('runtime')['dotenv_path'] ?? '.env') . '.test')) {
+            $this->configure_php_unit($recipe, $vars, $options['force'] ?? false);
         }
     }
-
     public function unconfigure(Recipe $recipe, $vars, Lock $lock): void
     {
-        $this->unconfigureEnvFiles($recipe);
-        $this->unconfigurePhpUnit($recipe);
+        $this->unconfigure_env_files($recipe);
+        $this->unconfigure_php_unit($recipe);
     }
-
-    public function update(RecipeUpdate $recipeUpdate, array $originalConfig, array $newConfig): void
+    public function update(Recipe_Update $recipe_update, array $original_config, array $new_config): void
     {
-        $recipeUpdate->addOriginalFiles(
-            $this->getContentsAfterApplyingRecipe($recipeUpdate->getRootDir(), $recipeUpdate->getOriginalRecipe(), $originalConfig)
-        );
-
-        $recipeUpdate->addNewFiles(
-            $this->getContentsAfterApplyingRecipe($recipeUpdate->getRootDir(), $recipeUpdate->getNewRecipe(), $newConfig)
-        );
+        $recipe_update->add_original_files($this->get_contents_after_applying_recipe($recipe_update->get_root_dir(), $recipe_update->get_original_recipe(), $original_config));
+        $recipe_update->add_new_files($this->get_contents_after_applying_recipe($recipe_update->get_root_dir(), $recipe_update->get_new_recipe(), $new_config));
     }
-
-    private function configureEnvDist(Recipe $recipe, $vars, bool $update): void
+    private function configure_env_dist(Recipe $recipe, $vars, bool $update): void
     {
-        $dotenvPath = $this->options->get('runtime')['dotenv_path'] ?? '.env';
-        $files = '' === $this->suffix ? [$dotenvPath.'.dist', $dotenvPath] : [$dotenvPath.'.'.$this->suffix];
-
+        $dotenv_path = $this->options->get('runtime')['dotenv_path'] ?? '.env';
+        $files = '' === $this->suffix ? [$dotenv_path . '.dist', $dotenv_path] : [$dotenv_path . '.' . $this->suffix];
         foreach ($files as $file) {
-            $env = $this->options->get('root-dir').'/'.$file;
+            $env = $this->options->get('root-dir') . '/' . $file;
             if (!is_file($env)) {
                 continue;
             }
-
-            if (!$update && $this->isFileMarked($recipe, $env)) {
+            if (!$update && $this->is_file_marked($recipe, $env)) {
                 continue;
             }
-
             $data = '';
             foreach ($vars as $key => $value) {
-                $existingValue = $update ? $this->findExistingValue($key, $env, $recipe) : null;
-                $value = $this->evaluateValue($value, $existingValue);
+                $existing_value = $update ? $this->find_existing_value($key, $env, $recipe) : null;
+                $value = $this->evaluate_value($value, $existing_value);
                 if ('#' === $key[0] && is_numeric(substr((string) $key, 1))) {
                     if ('' === $value) {
                         $data .= "#\n";
                     } else {
-                        $data .= '# '.$value."\n";
+                        $data .= '# ' . $value . "\n";
                     }
-
                     continue;
                 }
-
-                $value = $this->options->expandTargetDir($value);
+                $value = $this->options->expand_target_dir($value);
                 if (false !== strpbrk((string) $value, " \t\n&!\"")) {
-                    $value = '"'.str_replace(['\\', '"', "\t", "\n"], ['\\\\', '\\"', '\t', '\n'], $value).'"';
+                    $value = '"' . str_replace(['\\', '"', "\t", "\n"], ['\\\\', '\"', '\t', '\n'], $value) . '"';
                 }
-                $data .= "$key=$value\n";
+                $data .= "{$key}={$value}\n";
             }
-            $data = $this->markData($recipe, $data);
-
-            if (!$this->updateData($env, $data)) {
+            $data = $this->mark_data($recipe, $data);
+            if (!$this->update_data($env, $data)) {
                 file_put_contents($env, $data, \FILE_APPEND);
             }
         }
     }
-
-    private function configurePhpUnit(Recipe $recipe, $vars, bool $update): void
+    private function configure_php_unit(Recipe $recipe, $vars, bool $update): void
     {
         foreach (['phpunit.xml.dist', 'phpunit.dist.xml', 'phpunit.xml'] as $file) {
-            $phpunit = $this->options->get('root-dir').'/'.$file;
+            $phpunit = $this->options->get('root-dir') . '/' . $file;
             if (!is_file($phpunit)) {
                 continue;
             }
-
-            if (!$update && $this->isFileXmlMarked($recipe, $phpunit)) {
+            if (!$update && $this->is_file_xml_marked($recipe, $phpunit)) {
                 continue;
             }
-
             $data = '';
             foreach ($vars as $key => $value) {
-                $value = $this->evaluateValue($value);
+                $value = $this->evaluate_value($value);
                 if ('#' === $key[0]) {
                     if (is_numeric(substr((string) $key, 1))) {
-                        $doc = new \DOMDocument();
-                        $data .= '        '.$doc->saveXML($doc->createComment(' '.$value.' '))."\n";
+                        $doc = new \Dom_Document();
+                        $data .= '        ' . $doc->save_xml($doc->create_comment(' ' . $value . ' ')) . "\n";
                     } else {
-                        $value = $this->options->expandTargetDir($value);
-                        $doc = new \DOMDocument();
-                        $fragment = $doc->createElement('env');
-                        $fragment->setAttribute('name', substr((string) $key, 1));
-                        $fragment->setAttribute('value', $value);
-                        $data .= '        '.str_replace(['<', '/>'], ['<!-- ', ' -->'], $doc->saveXML($fragment))."\n";
+                        $value = $this->options->expand_target_dir($value);
+                        $doc = new \Dom_Document();
+                        $fragment = $doc->create_element('env');
+                        $fragment->set_attribute('name', substr((string) $key, 1));
+                        $fragment->set_attribute('value', $value);
+                        $data .= '        ' . str_replace(['<', '/>'], ['<!-- ', ' -->'], $doc->save_xml($fragment)) . "\n";
                     }
                 } else {
-                    $value = $this->options->expandTargetDir($value);
-                    $doc = new \DOMDocument();
-                    $fragment = $doc->createElement('env');
-                    $fragment->setAttribute('name', $key);
-                    $fragment->setAttribute('value', $value);
-                    $data .= '        '.$doc->saveXML($fragment)."\n";
+                    $value = $this->options->expand_target_dir($value);
+                    $doc = new \Dom_Document();
+                    $fragment = $doc->create_element('env');
+                    $fragment->set_attribute('name', $key);
+                    $fragment->set_attribute('value', $value);
+                    $data .= '        ' . $doc->save_xml($fragment) . "\n";
                 }
             }
-            $data = $this->markXmlData($recipe, $data);
-
-            if (!$this->updateData($phpunit, $data)) {
-                file_put_contents($phpunit, preg_replace('{^(\s+</php>)}m', $data.'$1', file_get_contents($phpunit)));
+            $data = $this->mark_xml_data($recipe, $data);
+            if (!$this->update_data($phpunit, $data)) {
+                file_put_contents($phpunit, preg_replace('{^(\s+</php>)}m', $data . '$1', file_get_contents($phpunit)));
             }
         }
     }
-
-    private function unconfigureEnvFiles(Recipe $recipe): void
+    private function unconfigure_env_files(Recipe $recipe): void
     {
-        $dotenvPath = $this->options->get('runtime')['dotenv_path'] ?? '.env';
-        $files = '' === $this->suffix ? [$dotenvPath, $dotenvPath.'.dist'] : [$dotenvPath.'.'.$this->suffix];
-
+        $dotenv_path = $this->options->get('runtime')['dotenv_path'] ?? '.env';
+        $files = '' === $this->suffix ? [$dotenv_path, $dotenv_path . '.dist'] : [$dotenv_path . '.' . $this->suffix];
         foreach ($files as $file) {
-            $env = $this->options->get('root-dir').'/'.$file;
+            $env = $this->options->get('root-dir') . '/' . $file;
             if (!file_exists($env)) {
                 continue;
             }
-
-            $contents = preg_replace(\sprintf('{%s*###> %s ###.*###< %s ###%s+}s', "\n", $recipe->getName(), $recipe->getName(), "\n"), "\n", file_get_contents($env), -1, $count);
+            $contents = preg_replace(\sprintf('{%s*###> %s ###.*###< %s ###%s+}s', "\n", $recipe->get_name(), $recipe->get_name(), "\n"), "\n", file_get_contents($env), -1, $count);
             if (!$count) {
                 continue;
             }
-
             $this->write(\sprintf('Removing environment variables from %s', $file));
             file_put_contents($env, $contents);
         }
     }
-
-    private function unconfigurePhpUnit(Recipe $recipe): void
+    private function unconfigure_php_unit(Recipe $recipe): void
     {
         foreach (['phpunit.dist.xml', 'phpunit.xml.dist', 'phpunit.xml'] as $file) {
-            $phpunit = $this->options->get('root-dir').'/'.$file;
+            $phpunit = $this->options->get('root-dir') . '/' . $file;
             if (!is_file($phpunit)) {
                 continue;
             }
-
-            $contents = preg_replace(\sprintf('{%s*\s+<!-- ###\+ %s ### -->.*<!-- ###- %s ### -->%s+}s', "\n", $recipe->getName(), $recipe->getName(), "\n"), "\n", file_get_contents($phpunit), -1, $count);
+            $contents = preg_replace(\sprintf('{%s*\s+<!-- ###\+ %s ### -->.*<!-- ###- %s ### -->%s+}s', "\n", $recipe->get_name(), $recipe->get_name(), "\n"), "\n", file_get_contents($phpunit), -1, $count);
             if (!$count) {
                 continue;
             }
-
             $this->write(\sprintf('Removing environment variables from %s', $file));
             file_put_contents($phpunit, $contents);
         }
     }
-
     /**
      * Evaluates expressions like %generate(secret)%.
      *
      * If $originalValue is passed, and the value contains an expression.
      * the $originalValue is used.
      */
-    private function evaluateValue($value, ?string $originalValue = null)
+    private function evaluate_value($value, ?string $original_value = null)
     {
         if ('%generate(secret)%' === $value) {
-            if (null !== $originalValue) {
-                return $originalValue;
+            if (null !== $original_value) {
+                return $original_value;
             }
-
-            return $this->generateRandomBytes();
+            return $this->generate_random_bytes();
         }
         if (preg_match('~^%generate\(secret,\s*([0-9]+)\)%$~', (string) $value, $matches)) {
-            if (null !== $originalValue) {
-                return $originalValue;
+            if (null !== $original_value) {
+                return $original_value;
             }
-
-            return $this->generateRandomBytes($matches[1]);
+            return $this->generate_random_bytes($matches[1]);
         }
-
         return $value;
     }
-
-    private function generateRandomBytes($length = 16): string
+    private function generate_random_bytes($length = 16): string
     {
         return bin2hex(random_bytes($length));
     }
-
-    private function getContentsAfterApplyingRecipe(string $rootDir, Recipe $recipe, array $vars): array
+    private function get_contents_after_applying_recipe(string $root_dir, Recipe $recipe, array $vars): array
     {
-        $dotenvPath = $this->options->get('runtime')['dotenv_path'] ?? '.env';
-        $files = '' === $this->suffix ? [$dotenvPath, $dotenvPath.'.dist', 'phpunit.dist.xml', 'phpunit.xml.dist', 'phpunit.xml'] : [$dotenvPath.'.'.$this->suffix];
-
+        $dotenv_path = $this->options->get('runtime')['dotenv_path'] ?? '.env';
+        $files = '' === $this->suffix ? [$dotenv_path, $dotenv_path . '.dist', 'phpunit.dist.xml', 'phpunit.xml.dist', 'phpunit.xml'] : [$dotenv_path . '.' . $this->suffix];
         if (0 === \count($vars)) {
             return array_fill_keys($files, null);
         }
-
-        $originalContents = [];
+        $original_contents = [];
         foreach ($files as $file) {
-            $originalContents[$file] = file_exists($rootDir.'/'.$file) ? file_get_contents($rootDir.'/'.$file) : null;
+            $original_contents[$file] = file_exists($root_dir . '/' . $file) ? file_get_contents($root_dir . '/' . $file) : null;
         }
-
-        $this->configureEnvDist(
-            $recipe,
-            $vars,
-            true
-        );
-
-        if ('' === $this->suffix && !file_exists($rootDir.'/'.$dotenvPath.'.test')) {
-            $this->configurePhpUnit(
-                $recipe,
-                $vars,
-                true
-            );
+        $this->configure_env_dist($recipe, $vars, true);
+        if ('' === $this->suffix && !file_exists($root_dir . '/' . $dotenv_path . '.test')) {
+            $this->configure_php_unit($recipe, $vars, true);
         }
-
-        $updatedContents = [];
+        $updated_contents = [];
         foreach ($files as $file) {
-            $updatedContents[$file] = file_exists($rootDir.'/'.$file) ? file_get_contents($rootDir.'/'.$file) : null;
+            $updated_contents[$file] = file_exists($root_dir . '/' . $file) ? file_get_contents($root_dir . '/' . $file) : null;
         }
-
-        foreach ($originalContents as $file => $contents) {
+        foreach ($original_contents as $file => $contents) {
             if (null === $contents) {
-                if (file_exists($rootDir.'/'.$file)) {
-                    unlink($rootDir.'/'.$file);
+                if (file_exists($root_dir . '/' . $file)) {
+                    unlink($root_dir . '/' . $file);
                 }
             } else {
-                file_put_contents($rootDir.'/'.$file, $contents);
+                file_put_contents($root_dir . '/' . $file, $contents);
             }
         }
-
-        return $updatedContents;
+        return $updated_contents;
     }
-
     /**
      * Attempts to find the existing value of an environment variable.
      */
-    private function findExistingValue(string $var, string $filename, Recipe $recipe): ?string
+    private function find_existing_value(string $var, string $filename, Recipe $recipe): ?string
     {
         if (!file_exists($filename)) {
             return null;
         }
-
         $contents = file_get_contents($filename);
-        $section = $this->extractSection($recipe, $contents);
+        $section = $this->extract_section($recipe, $contents);
         if (!$section) {
             return null;
         }
-
         $lines = explode("\n", $section);
         foreach ($lines as $line) {
             if (!str_starts_with($line, \sprintf('%s=', $var))) {
                 continue;
             }
-
             return trim(substr($line, \strlen($var) + 1));
         }
-
         return null;
     }
 }

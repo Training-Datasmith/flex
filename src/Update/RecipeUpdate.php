@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,98 +9,80 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex\Update;
 
 use Symfony\Flex\Lock;
 use Symfony\Flex\Recipe;
-
-class RecipeUpdate
+class Recipe_Update
 {
     /** @var string[] */
-    private array $originalRecipeFiles = [];
+    private array $original_recipe_files = [];
     /** @var string[] */
-    private array $newRecipeFiles = [];
-    private array $copyFromPackagePaths = [];
-
-    public function __construct(private readonly Recipe $originalRecipe, private readonly Recipe $newRecipe, private readonly Lock $lock, private readonly string $rootDir)
+    private array $new_recipe_files = [];
+    private array $copy_from_package_paths = [];
+    public function __construct(private readonly Recipe $original_recipe, private readonly Recipe $new_recipe, private readonly Lock $lock, private readonly string $root_dir)
     {
     }
-
-    public function getOriginalRecipe(): Recipe
+    public function get_original_recipe(): Recipe
     {
-        return $this->originalRecipe;
+        return $this->original_recipe;
     }
-
-    public function getNewRecipe(): Recipe
+    public function get_new_recipe(): Recipe
     {
-        return $this->newRecipe;
+        return $this->new_recipe;
     }
-
-    public function getLock(): Lock
+    public function get_lock(): Lock
     {
         return $this->lock;
     }
-
-    public function getRootDir(): string
+    public function get_root_dir(): string
     {
-        return $this->rootDir;
+        return $this->root_dir;
     }
-
-    public function getPackageName(): string
+    public function get_package_name(): string
     {
-        return $this->originalRecipe->getName();
+        return $this->original_recipe->get_name();
     }
-
-    public function setOriginalFile(string $filename, ?string $contents): void
+    public function set_original_file(string $filename, ?string $contents): void
     {
-        $this->originalRecipeFiles[$filename] = $contents;
+        $this->original_recipe_files[$filename] = $contents;
     }
-
-    public function setNewFile(string $filename, ?string $contents): void
+    public function set_new_file(string $filename, ?string $contents): void
     {
-        $this->newRecipeFiles[$filename] = $contents;
+        $this->new_recipe_files[$filename] = $contents;
     }
-
-    public function addOriginalFiles(array $files): void
+    public function add_original_files(array $files): void
     {
         foreach ($files as $file => $contents) {
             if (null === $contents) {
                 continue;
             }
-
-            $this->setOriginalFile($file, $contents);
+            $this->set_original_file($file, $contents);
         }
     }
-
-    public function addNewFiles(array $files): void
+    public function add_new_files(array $files): void
     {
         foreach ($files as $file => $contents) {
             if (null === $contents) {
                 continue;
             }
-
-            $this->setNewFile($file, $contents);
+            $this->set_new_file($file, $contents);
         }
     }
-
-    public function getOriginalFiles(): array
+    public function get_original_files(): array
     {
-        return $this->originalRecipeFiles;
+        return $this->original_recipe_files;
     }
-
-    public function getNewFiles(): array
+    public function get_new_files(): array
     {
-        return $this->newRecipeFiles;
+        return $this->new_recipe_files;
     }
-
-    public function getCopyFromPackagePaths(): array
+    public function get_copy_from_package_paths(): array
     {
-        return $this->copyFromPackagePaths;
+        return $this->copy_from_package_paths;
     }
-
-    public function addCopyFromPackagePath(string $source, string $target): void
+    public function add_copy_from_package_path(string $source, string $target): void
     {
-        $this->copyFromPackagePaths[$source] = $target;
+        $this->copy_from_package_paths[$source] = $target;
     }
 }

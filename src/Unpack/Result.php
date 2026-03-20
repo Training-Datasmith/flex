@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,46 +9,37 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex\Unpack;
 
-use Composer\Package\PackageInterface;
-
+use Composer\Package\Package_Interface;
 class Result
 {
     private array $unpacked = [];
     private array $required = [];
-
-    public function addUnpacked(PackageInterface $package): bool
+    public function add_unpacked(Package_Interface $package): bool
     {
-        $name = $package->getName();
-
+        $name = $package->get_name();
         if (!isset($this->unpacked[$name])) {
             $this->unpacked[$name] = $package;
-
             return true;
         }
-
         return false;
     }
-
     /**
      * @return PackageInterface[]
      */
-    public function getUnpacked(): array
+    public function get_unpacked(): array
     {
         return $this->unpacked;
     }
-
-    public function addRequired(string $package): void
+    public function add_required(string $package): void
     {
         $this->required[] = $package;
     }
-
     /**
      * @return string[]
      */
-    public function getRequired(): array
+    public function get_required(): array
     {
         // we need at least one package for the command to work properly
         return $this->required ?: ['symfony/flex'];

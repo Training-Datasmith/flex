@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,37 +9,27 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex\Unpack;
 
 class Operation
 {
     private array $packages = [];
-
     public function __construct(private readonly bool $unpack, private readonly bool $sort)
     {
     }
-
-    public function addPackage(string $name, string $version, bool $dev): void
+    public function add_package(string $name, string $version, bool $dev): void
     {
-        $this->packages[] = [
-            'name' => $name,
-            'version' => $version,
-            'dev' => $dev,
-        ];
+        $this->packages[] = ['name' => $name, 'version' => $version, 'dev' => $dev];
     }
-
-    public function getPackages(): array
+    public function get_packages(): array
     {
         return $this->packages;
     }
-
-    public function shouldUnpack(): bool
+    public function should_unpack(): bool
     {
         return $this->unpack;
     }
-
-    public function shouldSort(): bool
+    public function should_sort(): bool
     {
         return $this->sort;
     }

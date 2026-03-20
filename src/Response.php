@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,7 +9,6 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex;
 
 /**
@@ -19,55 +17,45 @@ namespace Symfony\Flex;
 class Response implements \JsonSerializable
 {
     private array $headers;
-
     /**
      * @param mixed $body The response as JSON
      */
-    public function __construct(private $body, private readonly array $origHeaders = [], private readonly int $code = 200)
+    public function __construct(private $body, private readonly array $orig_headers = [], private readonly int $code = 200)
     {
-        $this->headers = $this->parseHeaders($this->origHeaders);
+        $this->headers = $this->parse_headers($this->orig_headers);
     }
-
-    public function getStatusCode(): int
+    public function get_status_code(): int
     {
         return $this->code;
     }
-
-    public function getHeader(string $name): string
+    public function get_header(string $name): string
     {
         return $this->headers[strtolower($name)][0] ?? '';
     }
-
-    public function getHeaders(string $name): array
+    public function get_headers(string $name): array
     {
         return $this->headers[strtolower($name)] ?? [];
     }
-
-    public function getBody()
+    public function get_body()
     {
         return $this->body;
     }
-
-    public function getOrigHeaders(): array
+    public function get_orig_headers(): array
     {
-        return $this->origHeaders;
+        return $this->orig_headers;
     }
-
-    public static function fromJson(array $json): self
+    public static function from_json(array $json): self
     {
         $response = new self($json['body']);
         $response->headers = $json['headers'];
-
         return $response;
     }
-
-    #[\ReturnTypeWillChange]
+    #[\Return_Type_Will_Change]
     public function jsonSerialize()
     {
         return ['body' => $this->body, 'headers' => $this->headers];
     }
-
-    private function parseHeaders(array $headers): array
+    private function parse_headers(array $headers): array
     {
         $values = [];
         foreach (array_reverse($headers) as $header) {
@@ -77,7 +65,6 @@ class Response implements \JsonSerializable
                 break;
             }
         }
-
         return $values;
     }
 }

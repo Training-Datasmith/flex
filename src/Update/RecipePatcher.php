@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,169 +9,134 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex\Update;
 
-use Composer\IO\IOInterface;
-use Composer\Util\ProcessExecutor;
-use Symfony\Component\Filesystem\Exception\IOException;
+use Composer\IO\Io_Interface;
+use Composer\Util\Process_Executor;
+use Symfony\Component\Filesystem\Exception\Io_Exception;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Flex\Lock;
-
-class RecipePatcher
+class Recipe_Patcher
 {
     private readonly \Symfony\Component\Filesystem\Filesystem $filesystem;
     private $io;
-    private $processExecutor;
-
-    public function __construct(private readonly string $rootDir, IOInterface $io, private readonly Lock $symfonyLock)
+    private $process_executor;
+    public function __construct(private readonly string $root_dir, Io_Interface $io, private readonly Lock $symfony_lock)
     {
         $this->filesystem = new Filesystem();
         $this->io = $io;
-        $this->processExecutor = new ProcessExecutor($io);
+        $this->process_executor = new Process_Executor($io);
     }
-
     /**
      * Applies the patch. If it fails unexpectedly, an exception will be thrown.
      *
      * @return bool returns true if fully successful, false if conflicts were encountered
      */
-    public function applyPatch(RecipePatch $patch, ?string $packageName = null): bool
+    public function apply_patch(Recipe_Patch $patch, ?string $package_name = null): bool
     {
-        $withConflicts = $this->_applyPatchFile($patch);
-        $lockedFiles = $packageName ? array_count_values(array_merge(...array_column(array_filter($this->symfonyLock->all(), fn ($package): bool => $package !== $packageName, \ARRAY_FILTER_USE_KEY), 'files'))) : [];
-
-        $nonRemovableFiles = [];
-        foreach ($patch->getDeletedFiles() as $deletedFile) {
-            if (!file_exists($this->rootDir.'/'.$deletedFile)) {
+        $with_conflicts = $this->_apply_patch_file($patch);
+        $locked_files = $package_name ? array_count_values(array_merge(...array_column(array_filter($this->symfony_lock->all(), fn($package): bool => $package !== $package_name, \ARRAY_FILTER_USE_KEY), 'files'))) : [];
+        $non_removable_files = [];
+        foreach ($patch->get_deleted_files() as $deleted_file) {
+            if (!file_exists($this->root_dir . '/' . $deleted_file)) {
                 continue;
             }
-
-            if (isset($lockedFiles[$deletedFile])) {
-                $nonRemovableFiles[] = $deletedFile;
-
+            if (isset($locked_files[$deleted_file])) {
+                $non_removable_files[] = $deleted_file;
                 continue;
             }
-
-            $this->execute(\sprintf('git rm %s', ProcessExecutor::escape($deletedFile)), $this->rootDir);
+            $this->execute(\sprintf('git rm %s', Process_Executor::escape($deleted_file)), $this->root_dir);
         }
-
-        if ($nonRemovableFiles) {
-            $this->io->writeError('  <warning>The following files were removed in the recipe, but are still referenced by other recipes. You might need to adjust them manually:</warning>');
-            foreach ($nonRemovableFiles as $file) {
-                $this->io->writeError('      - '.$file);
+        if ($non_removable_files) {
+            $this->io->write_error('  <warning>The following files were removed in the recipe, but are still referenced by other recipes. You might need to adjust them manually:</warning>');
+            foreach ($non_removable_files as $file) {
+                $this->io->write_error('      - ' . $file);
             }
-
-            $this->io->writeError('');
+            $this->io->write_error('');
         }
-
-        return $withConflicts;
+        return $with_conflicts;
     }
-
-    public function generatePatch(array $originalFiles, array $newFiles): RecipePatch
+    public function generate_patch(array $original_files, array $new_files): Recipe_Patch
     {
-        $ignoredFiles = $this->getIgnoredFiles(array_keys($originalFiles) + array_keys($newFiles));
-
+        $ignored_files = $this->get_ignored_files(array_keys($original_files) + array_keys($new_files));
         // null implies "file does not exist"
-        $originalFiles = array_filter($originalFiles, fn ($file, $fileName) => null !== $file && !\in_array($fileName, $ignoredFiles), \ARRAY_FILTER_USE_BOTH);
-
-        $newFiles = array_filter($newFiles, fn ($file, $fileName) => null !== $file && !\in_array($fileName, $ignoredFiles), \ARRAY_FILTER_USE_BOTH);
-
-        $deletedFiles = [];
+        $original_files = array_filter($original_files, fn($file, $file_name) => null !== $file && !\in_array($file_name, $ignored_files), \ARRAY_FILTER_USE_BOTH);
+        $new_files = array_filter($new_files, fn($file, $file_name) => null !== $file && !\in_array($file_name, $ignored_files), \ARRAY_FILTER_USE_BOTH);
+        $deleted_files = [];
         // find removed files & record that they are deleted
         // unset them from originalFiles to avoid unnecessary blobs being added
-        foreach ($originalFiles as $file => $contents) {
-            if (!isset($newFiles[$file])) {
-                $deletedFiles[] = $file;
-                unset($originalFiles[$file]);
+        foreach ($original_files as $file => $contents) {
+            if (!isset($new_files[$file])) {
+                $deleted_files[] = $file;
+                unset($original_files[$file]);
             }
         }
-
         // If a file is being modified, but does not exist in the current project,
         // it cannot be patched. We generate the diff for these, but then remove
         // it from the patch (and optionally report this diff to the user).
-        $modifiedFiles = array_intersect_key(array_keys($originalFiles), array_keys($newFiles));
-        $deletedModifiedFiles = [];
-        foreach ($modifiedFiles as $modifiedFile) {
-            if (!file_exists($this->rootDir.'/'.$modifiedFile) && $originalFiles[$modifiedFile] !== $newFiles[$modifiedFile]) {
-                $deletedModifiedFiles[] = $modifiedFile;
+        $modified_files = array_intersect_key(array_keys($original_files), array_keys($new_files));
+        $deleted_modified_files = [];
+        foreach ($modified_files as $modified_file) {
+            if (!file_exists($this->root_dir . '/' . $modified_file) && $original_files[$modified_file] !== $new_files[$modified_file]) {
+                $deleted_modified_files[] = $modified_file;
             }
         }
-
         // Use git binary to get project path from repository root
-        $prefix = trim($this->execute('git rev-parse --show-prefix', $this->rootDir));
-        $tmpPath = sys_get_temp_dir().'/_flex_recipe_update'.uniqid(mt_rand(), true);
-        $this->filesystem->mkdir($tmpPath);
-
+        $prefix = trim($this->execute('git rev-parse --show-prefix', $this->root_dir));
+        $tmp_path = sys_get_temp_dir() . '/_flex_recipe_update' . uniqid(mt_rand(), true);
+        $this->filesystem->mkdir($tmp_path);
         try {
-            $this->execute('git init', $tmpPath);
-            $this->execute('git config commit.gpgsign false', $tmpPath);
-            $this->execute('git config user.name "Flex Updater"', $tmpPath);
-            $this->execute('git config user.email ""', $tmpPath);
-
+            $this->execute('git init', $tmp_path);
+            $this->execute('git config commit.gpgsign false', $tmp_path);
+            $this->execute('git config user.name "Flex Updater"', $tmp_path);
+            $this->execute('git config user.email ""', $tmp_path);
             $blobs = [];
-            if (\count($originalFiles) > 0) {
-                $this->writeFiles($originalFiles, $tmpPath);
-                $this->execute('git add -A', $tmpPath);
-                $this->execute('git commit -n -m "original files"', $tmpPath);
-
-                $blobs = $this->generateBlobs($originalFiles, $tmpPath);
+            if (\count($original_files) > 0) {
+                $this->write_files($original_files, $tmp_path);
+                $this->execute('git add -A', $tmp_path);
+                $this->execute('git commit -n -m "original files"', $tmp_path);
+                $blobs = $this->generate_blobs($original_files, $tmp_path);
             }
-
-            $this->writeFiles($newFiles, $tmpPath);
-            $this->execute('git add -A', $tmpPath);
-
-            $patchString = $this->execute(\sprintf('git diff --cached --src-prefix "a/%s" --dst-prefix "b/%s"', $prefix, $prefix), $tmpPath);
-            $removedPatches = [];
-            $patchString = DiffHelper::removeFilesFromPatch($patchString, $deletedModifiedFiles, $removedPatches);
-
-            return new RecipePatch(
-                $patchString,
-                $blobs,
-                $deletedFiles,
-                $removedPatches
-            );
+            $this->write_files($new_files, $tmp_path);
+            $this->execute('git add -A', $tmp_path);
+            $patch_string = $this->execute(\sprintf('git diff --cached --src-prefix "a/%s" --dst-prefix "b/%s"', $prefix, $prefix), $tmp_path);
+            $removed_patches = [];
+            $patch_string = Diff_Helper::remove_files_from_patch($patch_string, $deleted_modified_files, $removed_patches);
+            return new Recipe_Patch($patch_string, $blobs, $deleted_files, $removed_patches);
         } finally {
             try {
-                $this->filesystem->remove($tmpPath);
-            } catch (IOException) {
+                $this->filesystem->remove($tmp_path);
+            } catch (Io_Exception) {
                 // this can sometimes fail due to git file permissions
                 // if that happens, just leave it: we're in the temp directory anyways
             }
         }
     }
-
-    private function writeFiles(array $files, string $directory): void
+    private function write_files(array $files, string $directory): void
     {
         foreach ($files as $filename => $contents) {
-            $path = $directory.'/'.$filename;
+            $path = $directory . '/' . $filename;
             if (null === $contents) {
                 if (file_exists($path)) {
                     unlink($path);
                 }
-
                 continue;
             }
-
             if (!file_exists(\dirname($path))) {
                 $this->filesystem->mkdir(\dirname($path));
             }
             file_put_contents($path, $contents);
         }
     }
-
     private function execute(string $command, string $cwd): string
     {
         $output = '';
-        $statusCode = $this->processExecutor->execute($command, $output, $cwd);
-
-        if (0 !== $statusCode) {
-            throw new \LogicException(\sprintf('Command "%s" failed: "%s". Output: "%s".', $command, $this->processExecutor->getErrorOutput(), $output));
+        $status_code = $this->process_executor->execute($command, $output, $cwd);
+        if (0 !== $status_code) {
+            throw new \LogicException(\sprintf('Command "%s" failed: "%s". Output: "%s".', $command, $this->process_executor->get_error_output(), $output));
         }
-
         return $output;
     }
-
     /**
      * Adds git blobs for each original file.
      *
@@ -181,95 +145,77 @@ class RecipePatcher
      * the ref to the original blob, and git uses that to find the
      * original file (which is needed for the 3-way merge).
      */
-    private function addMissingBlobs(array $blobs): array
+    private function add_missing_blobs(array $blobs): array
     {
-        $addedBlobs = [];
+        $added_blobs = [];
         foreach ($blobs as $hash => $contents) {
-            $blobPath = $this->getBlobPath($this->rootDir, $hash);
-            if (file_exists($blobPath)) {
+            $blob_path = $this->get_blob_path($this->root_dir, $hash);
+            if (file_exists($blob_path)) {
                 continue;
             }
-
-            $addedBlobs[] = $blobPath;
-            if (!file_exists(\dirname($blobPath))) {
-                $this->filesystem->mkdir(\dirname($blobPath));
+            $added_blobs[] = $blob_path;
+            if (!file_exists(\dirname($blob_path))) {
+                $this->filesystem->mkdir(\dirname($blob_path));
             }
-            file_put_contents($blobPath, $contents);
+            file_put_contents($blob_path, $contents);
         }
-
-        return $addedBlobs;
+        return $added_blobs;
     }
-
-    private function generateBlobs(array $originalFiles, string $originalFilesRoot): array
+    private function generate_blobs(array $original_files, string $original_files_root): array
     {
-        $addedBlobs = [];
-        foreach ($originalFiles as $filename => $contents) {
+        $added_blobs = [];
+        foreach ($original_files as $filename => $contents) {
             // if the file didn't originally exist, no blob needed
-            if (!file_exists($originalFilesRoot.'/'.$filename)) {
+            if (!file_exists($original_files_root . '/' . $filename)) {
                 continue;
             }
-
-            $hash = trim($this->execute('git hash-object '.ProcessExecutor::escape($filename), $originalFilesRoot));
-            $addedBlobs[$hash] = file_get_contents($this->getBlobPath($originalFilesRoot, $hash));
+            $hash = trim($this->execute('git hash-object ' . Process_Executor::escape($filename), $original_files_root));
+            $added_blobs[$hash] = file_get_contents($this->get_blob_path($original_files_root, $hash));
         }
-
-        return $addedBlobs;
+        return $added_blobs;
     }
-
-    private function getBlobPath(string $gitRoot, string $hash): string
+    private function get_blob_path(string $git_root, string $hash): string
     {
-        $gitDir = trim($this->execute('git rev-parse --absolute-git-dir', $gitRoot));
-
-        $hashStart = substr($hash, 0, 2);
-        $hashEnd = substr($hash, 2);
-
-        return $gitDir.'/objects/'.$hashStart.'/'.$hashEnd;
+        $git_dir = trim($this->execute('git rev-parse --absolute-git-dir', $git_root));
+        $hash_start = substr($hash, 0, 2);
+        $hash_end = substr($hash, 2);
+        return $git_dir . '/objects/' . $hash_start . '/' . $hash_end;
     }
-
-    private function _applyPatchFile(RecipePatch $patch): bool
+    private function _apply_patch_file(Recipe_Patch $patch): bool
     {
-        if (!$patch->getPatch()) {
+        if (!$patch->get_patch()) {
             // nothing to do!
             return true;
         }
-
-        $addedBlobs = $this->addMissingBlobs($patch->getBlobs());
-
-        $patchPath = $this->rootDir.'/_flex_recipe_update.patch';
-        file_put_contents($patchPath, $patch->getPatch());
-
+        $added_blobs = $this->add_missing_blobs($patch->get_blobs());
+        $patch_path = $this->root_dir . '/_flex_recipe_update.patch';
+        file_put_contents($patch_path, $patch->get_patch());
         try {
-            $this->execute('git update-index --refresh', $this->rootDir);
-
+            $this->execute('git update-index --refresh', $this->root_dir);
             $output = '';
-            $statusCode = $this->processExecutor->execute('git apply "_flex_recipe_update.patch" -3', $output, $this->rootDir);
-
-            if (0 === $statusCode) {
+            $status_code = $this->process_executor->execute('git apply "_flex_recipe_update.patch" -3', $output, $this->root_dir);
+            if (0 === $status_code) {
                 // successful with no conflicts
                 return true;
             }
-
-            if (str_contains((string) $this->processExecutor->getErrorOutput(), 'with conflicts')) {
+            if (str_contains((string) $this->process_executor->get_error_output(), 'with conflicts')) {
                 // successful with conflicts
                 return false;
             }
-
-            throw new \LogicException('Error applying the patch: '.$this->processExecutor->getErrorOutput());
+            throw new \LogicException('Error applying the patch: ' . $this->process_executor->get_error_output());
         } finally {
-            unlink($patchPath);
+            unlink($patch_path);
             // clean up any temporary blobs
-            foreach ($addedBlobs as $filename) {
+            foreach ($added_blobs as $filename) {
                 unlink($filename);
             }
         }
     }
-
-    private function getIgnoredFiles(array $fileNames): array
+    private function get_ignored_files(array $file_names): array
     {
-        $args = implode(' ', array_map([ProcessExecutor::class, 'escape'], $fileNames));
+        $args = implode(' ', array_map([Process_Executor::class, 'escape'], $file_names));
         $output = '';
-        $this->processExecutor->execute(\sprintf('git check-ignore %s', $args), $output, $this->rootDir);
-
-        return $this->processExecutor->splitLines($output);
+        $this->process_executor->execute(\sprintf('git check-ignore %s', $args), $output, $this->root_dir);
+        return $this->process_executor->split_lines($output);
     }
 }

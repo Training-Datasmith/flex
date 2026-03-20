@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,123 +9,101 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex;
 
 use Composer\Composer;
-use Composer\EventDispatcher\ScriptExecutionException;
-use Composer\IO\IOInterface;
-use Composer\Semver\Constraint\MatchAllConstraint;
-use Composer\Util\ProcessExecutor;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Output\StreamOutput;
-use Symfony\Component\Process\PhpExecutableFinder;
-
+use Composer\Event_Dispatcher\Script_Execution_Exception;
+use Composer\IO\Io_Interface;
+use Composer\Semver\Constraint\Match_All_Constraint;
+use Composer\Util\Process_Executor;
+use Symfony\Component\Console\Output\Output_Interface;
+use Symfony\Component\Console\Output\Stream_Output;
+use Symfony\Component\Process\Php_Executable_Finder;
 /**
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class ScriptExecutor
+class Script_Executor
 {
-    private readonly \Composer\Util\ProcessExecutor $executor;
-
-    public function __construct(private readonly Composer $composer, private readonly IOInterface $io, private readonly Options $options, ?ProcessExecutor $executor = null)
+    private readonly \Composer\Util\Process_Executor $executor;
+    public function __construct(private readonly Composer $composer, private readonly Io_Interface $io, private readonly Options $options, ?Process_Executor $executor = null)
     {
-        $this->executor = $executor ?: new ProcessExecutor();
+        $this->executor = $executor ?: new Process_Executor();
     }
-
     /**
      * @throws ScriptExecutionException if the executed command returns a non-0 exit code
      */
     public function execute(string $type, string $cmd, array $arguments = []): void
     {
-        $parsedCmd = $this->options->expandTargetDir($cmd);
-        if (null === $expandedCmd = $this->expandCmd($type, $parsedCmd, $arguments)) {
+        $parsed_cmd = $this->options->expand_target_dir($cmd);
+        if (null === $expanded_cmd = $this->expand_cmd($type, $parsed_cmd, $arguments)) {
             return;
         }
-
-        $cmdOutput = new StreamOutput(fopen('php://temp', 'rw'), OutputInterface::VERBOSITY_VERBOSE, $this->io->isDecorated());
-        $outputHandler = function ($type, string|iterable $buffer) use ($cmdOutput): void {
-            $cmdOutput->write($buffer, false, OutputInterface::OUTPUT_RAW);
+        $cmd_output = new Stream_Output(fopen('php://temp', 'rw'), Output_Interface::VERBOSITY_VERBOSE, $this->io->is_decorated());
+        $output_handler = function ($type, string|iterable $buffer) use ($cmd_output): void {
+            $cmd_output->write($buffer, false, Output_Interface::OUTPUT_RAW);
         };
-
-        $this->io->writeError(\sprintf('Executing script %s', $parsedCmd), $this->io->isVerbose());
-        $exitCode = $this->executor->execute($expandedCmd, $outputHandler);
-
-        $code = 0 === $exitCode ? ' <info>[OK]</>' : ' <error>[KO]</>';
-
-        if ($this->io->isVerbose()) {
-            $this->io->writeError(\sprintf('Executed script %s %s', $cmd, $code));
+        $this->io->write_error(\sprintf('Executing script %s', $parsed_cmd), $this->io->is_verbose());
+        $exit_code = $this->executor->execute($expanded_cmd, $output_handler);
+        $code = 0 === $exit_code ? ' <info>[OK]</>' : ' <error>[KO]</>';
+        if ($this->io->is_verbose()) {
+            $this->io->write_error(\sprintf('Executed script %s %s', $cmd, $code));
         } else {
-            $this->io->writeError($code);
+            $this->io->write_error($code);
         }
-
-        if (0 !== $exitCode) {
-            $this->io->writeError(' <error>[KO]</>');
-            $this->io->writeError(\sprintf('<error>Script %s returned with error code %s</>', $cmd, $exitCode));
-            fseek($cmdOutput->getStream(), 0);
-            foreach (explode("\n", stream_get_contents($cmdOutput->getStream())) as $line) {
-                $this->io->writeError('!!  '.$line);
+        if (0 !== $exit_code) {
+            $this->io->write_error(' <error>[KO]</>');
+            $this->io->write_error(\sprintf('<error>Script %s returned with error code %s</>', $cmd, $exit_code));
+            fseek($cmd_output->get_stream(), 0);
+            foreach (explode("\n", stream_get_contents($cmd_output->get_stream())) as $line) {
+                $this->io->write_error('!!  ' . $line);
             }
-
-            throw new ScriptExecutionException($cmd, $exitCode);
+            throw new Script_Execution_Exception($cmd, $exit_code);
         }
     }
-
-    private function expandCmd(string $type, string $cmd, array $arguments)
+    private function expand_cmd(string $type, string $cmd, array $arguments)
     {
         return match ($type) {
-            'symfony-cmd' => $this->expandSymfonyCmd($cmd, $arguments),
-            'php-script' => $this->expandPhpScript($cmd, $arguments),
+            'symfony-cmd' => $this->expand_symfony_cmd($cmd, $arguments),
+            'php-script' => $this->expand_php_script($cmd, $arguments),
             'script' => $cmd,
             default => throw new \InvalidArgumentException(\sprintf('Invalid symfony/flex auto-script in composer.json: "%s" is not a valid type of command.', $type)),
         };
     }
-
-    private function expandSymfonyCmd(string $cmd, array $arguments): ?string
+    private function expand_symfony_cmd(string $cmd, array $arguments): ?string
     {
-        $repo = $this->composer->getRepositoryManager()->getLocalRepository();
-        if (!$repo->findPackage('symfony/console', new MatchAllConstraint())) {
-            $this->io->writeError(\sprintf('<warning>Skipping "%s" (needs symfony/console to run).</>', $cmd));
-
+        $repo = $this->composer->get_repository_manager()->get_local_repository();
+        if (!$repo->find_package('symfony/console', new Match_All_Constraint())) {
+            $this->io->write_error(\sprintf('<warning>Skipping "%s" (needs symfony/console to run).</>', $cmd));
             return null;
         }
-
-        $console = ProcessExecutor::escape($this->options->get('root-dir').'/'.$this->options->get('bin-dir').'/console');
-        if ($this->io->isDecorated()) {
+        $console = Process_Executor::escape($this->options->get('root-dir') . '/' . $this->options->get('bin-dir') . '/console');
+        if ($this->io->is_decorated()) {
             $console .= ' --ansi';
         }
-
-        return $this->expandPhpScript($console.' '.$cmd, $arguments);
+        return $this->expand_php_script($console . ' ' . $cmd, $arguments);
     }
-
-    private function expandPhpScript(string $cmd, array $scriptArguments): string
+    private function expand_php_script(string $cmd, array $script_arguments): string
     {
-        $phpFinder = new PhpExecutableFinder();
-        if (!$php = $phpFinder->find(false)) {
+        $php_finder = new Php_Executable_Finder();
+        if (!$php = $php_finder->find(false)) {
             throw new \RuntimeException('The PHP executable could not be found, add it to your PATH and try again.');
         }
-
-        $arguments = $phpFinder->findArguments();
-
+        $arguments = $php_finder->find_arguments();
         if ($env = (string) getenv('COMPOSER_ORIGINAL_INIS')) {
             $paths = explode(\PATH_SEPARATOR, $env);
             $ini = array_shift($paths);
         } else {
             $ini = php_ini_loaded_file();
         }
-
         if ($ini) {
-            $arguments[] = '--php-ini='.$ini;
+            $arguments[] = '--php-ini=' . $ini;
         }
-
-        if ($memoryLimit = (string) getenv('COMPOSER_MEMORY_LIMIT')) {
+        if ($memory_limit = (string) getenv('COMPOSER_MEMORY_LIMIT')) {
             $arguments[] = '-d';
-            $arguments[] = 'memory_limit='.$memoryLimit;
+            $arguments[] = 'memory_limit=' . $memory_limit;
         }
-
-        $phpArgs = implode(' ', array_map([ProcessExecutor::class, 'escape'], $arguments));
-        $scriptArgs = implode(' ', array_map([ProcessExecutor::class, 'escape'], $scriptArguments));
-
-        return ProcessExecutor::escape($php).($phpArgs ? ' '.$phpArgs : '').' '.$cmd.($scriptArgs ? ' '.$scriptArgs : '');
+        $php_args = implode(' ', array_map([Process_Executor::class, 'escape'], $arguments));
+        $script_args = implode(' ', array_map([Process_Executor::class, 'escape'], $script_arguments));
+        return Process_Executor::escape($php) . ($php_args ? ' ' . $php_args : '') . ' ' . $cmd . ($script_args ? ' ' . $script_args : '');
     }
 }

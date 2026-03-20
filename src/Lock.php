@@ -1,7 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
+declare (strict_types=1);
 /*
  * This file is part of the Symfony package.
  *
@@ -10,11 +9,9 @@ declare(strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 namespace Symfony\Flex;
 
-use Composer\Json\JsonFile;
-
+use Composer\Json\Json_File;
 /**
  * @author Fabien Potencier <fabien@symfony.com>
  */
@@ -23,32 +20,27 @@ class Lock
     private $json;
     private $lock = [];
     private bool $changed = false;
-
-    public function __construct($lockFile)
+    public function __construct($lock_file)
     {
-        $this->json = new JsonFile($lockFile);
+        $this->json = new Json_File($lock_file);
         if ($this->json->exists()) {
             $this->lock = $this->json->read();
         }
     }
-
     public function has($name): bool
     {
         return \array_key_exists($name, $this->lock);
     }
-
     public function add($name, $data): void
     {
         $current = $this->lock[$name] ?? [];
         $this->lock[$name] = array_merge($current, $data);
         $this->changed = true;
     }
-
     public function get($name)
     {
         return $this->lock[$name] ?? null;
     }
-
     public function set($name, $data): void
     {
         if (!\array_key_exists($name, $this->lock) || $data !== $this->lock[$name]) {
@@ -56,7 +48,6 @@ class Lock
             $this->changed = true;
         }
     }
-
     public function remove($name): void
     {
         if (\array_key_exists($name, $this->lock)) {
@@ -64,26 +55,22 @@ class Lock
             $this->changed = true;
         }
     }
-
     public function write(): void
     {
         if (!$this->changed) {
             return;
         }
-
         if ($this->lock) {
             ksort($this->lock);
             $this->json->write($this->lock);
         } elseif ($this->json->exists()) {
-            @unlink($this->json->getPath());
+            @unlink($this->json->get_path());
         }
     }
-
     public function delete(): void
     {
-        @unlink($this->json->getPath());
+        @unlink($this->json->get_path());
     }
-
     public function all(): array
     {
         return $this->lock;
